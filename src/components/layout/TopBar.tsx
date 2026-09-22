@@ -35,7 +35,6 @@ type TopBarProps = {
 
 export function TopBar({
     mode,
-    onModeChange,
     searchQuery,
     onSearchChange,
     onSearchSubmit,
@@ -118,28 +117,14 @@ export function TopBar({
                     )}
                 </div>
 
-                {/* Mode Toggle (Capsule) */}
+                {/* Context indicator (same capsule position as v2's mode switch) */}
                 <div className="flex bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10 shadow-lg h-12 items-center">
-                    <button
-                        onClick={() => onModeChange('explore')}
-                        className={`
-                            h-10 w-10 flex items-center justify-center rounded-full transition-all
-                            ${mode === 'explore' ? 'bg-white text-black shadow-sm' : 'text-white/70 hover:text-white'}
-                        `}
-                        title="探索モード"
-                    >
+                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-white text-black shadow-sm" title="地図表示">
                         <Search className="h-5 w-5" />
-                    </button>
-                    <button
-                        onClick={() => onModeChange('analyze')}
-                        className={`
-                            h-10 w-10 flex items-center justify-center rounded-full transition-all
-                            ${mode === 'analyze' ? 'bg-violet-700 text-white shadow-sm' : 'text-white/70 hover:text-white'}
-                        `}
-                        title="分析モード"
-                    >
+                    </div>
+                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-violet-700 text-white shadow-sm" title="夜景ポテンシャル">
                         <Sparkles className="h-5 w-5" />
-                    </button>
+                    </div>
                 </div>
             </div>
 

@@ -1,0 +1,163 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Layers, Sparkles } from 'lucide-react';
+import { LayerMenu } from '../layout/LayerMenu';
+import { LayerSettings } from '../layout/LayerSettings';
+import { TopBar } from '../layout/TopBar';
+import { CurrentLocationButton } from '../ui/CurrentLocationButton';
+import { useMapLibre, POTENTIAL_LAYER_ID } from '../../hooks/useMapLibre';
+import { useGeolocation } from '../../hooks/useGeolocation';
+import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
+import 'maplibre-gl/dist/maplibre-gl.css';
+
+export function PotentialMapView() {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const { map, isLoaded } = useMapLibre(containerRef);
+    const { location: currentLocation } = useGeolocation();
+    const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(true);
+    const [potentialEnabled, setPotentialEnabled] = useState(true);
+    const [viirsEnabled, setViirsEnabled] = useState(false);
+    const [aerialEnabled, setAerialEnabled] = useState(false);
+    const [potentialOpacity, setPotentialOpacity] = useState(0.82);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showResults, setShowResults] = useState(false);
+    const [locateError, setLocateError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!map || !isLoaded || !map.getLayer(POTENTIAL_LAYER_ID)) return;
+        map.setLayoutProperty(POTENTIAL_LAYER_ID, 'visibility', potentialEnabled ? 'visible' : 'none');
+        map.setPaintProperty(POTENTIAL_LAYER_ID, 'raster-opacity', potentialOpacity);
+    }, [map, isLoaded, potentialEnabled, potentialOpacity]);
+
+    useEffect(() => {
+        if (!map || !isLoaded) return;
+        const viirsLayer = map.getLayer('viirs-nightlight-layer');
+        const aerialLayer = map.getLayer('aerial-photo-layer');
+        if (viirsLayer) map.setLayoutProperty('viirs-nightlight-layer', 'visibility', viirsEnabled ? 'visible' : 'none');
+        if (aerialLayer) map.setLayoutProperty('aerial-photo-layer', 'visibility', aerialEnabled ? 'visible' : 'none');
+    }, [map, isLoaded, viirsEnabled, aerialEnabled]);
+
+    useEffect(() => {
+        if (!locateError) return;
+        const timer = window.setTimeout(() => setLocateError(null), 3000);
+        return () => window.clearTimeout(timer);
+    }, [locateError]);
+
+    const handleSearch = useCallback(async (query: string) => {
+        if (!query.trim()) return;
+        setIsSearching(true);
+        const results = await searchLocation(query);
+        setSearchResults(results);
+        setShowResults(results.length > 0);
+        setIsSearching(false);
+    }, []);
+
+    const handleSelectResult = useCallback((result: GeocodingResult) => {
+        map?.flyTo({ center: [result.lng, result.lat], zoom: 13, duration: 1200 });
+        setSearchQuery(result.displayName.split(',')[0]);
+        setShowResults(false);
+    }, [map]);
+
+    const handleLocate = useCallback(() => {
+        if (!map) return;
+        if (!currentLocation) {
+            setLocateError('現在地を取得できませんでした');
+            return;
+        }
+        map.flyTo({ center: [currentLocation.lng, currentLocation.lat], zoom: 14, duration: 1200 });
+    }, [currentLocation, map]);
+
+    return (
+        <div className="relative h-full w-full text-white">
+            <div ref={containerRef} className="h-full w-full touch-none" />
+
+            <TopBar
+                mode="explore"
+                onModeChange={() => undefined}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSearchSubmit={() => handleSearch(searchQuery)}
+                isSearching={isSearching}
+                searchResults={searchResults}
+                showResults={showResults}
+                onSelectResult={handleSelectResult}
+                onCloseResults={() => setShowResults(false)}
+                onFocusSearch={() => searchResults.length > 0 && setShowResults(true)}
+                postCount={0}
+            />
+
+            <div className="absolute top-36 left-4 right-4 z-[7000] flex flex-col gap-2 pointer-events-none md:left-auto md:right-4 md:w-[520px]">
+                {locateError && (
+                    <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-full border border-white/20 bg-red-500/95 px-4 py-2 text-xs font-bold text-white shadow-lg">
+                        <span>{locateError}</span>
+                        <button type="button" onClick={() => setLocateError(null)} className="rounded-full p-1 hover:bg-white/20" aria-label="エラーを閉じる">✕</button>
+                    </div>
+                )}
+            </div>
+
+            <LayerMenu isOpen={isLayerMenuOpen} onToggle={() => setIsLayerMenuOpen((open) => !open)}>
+                <div className="flex h-full flex-col bg-transparent text-white">
+                    <div className="flex items-center gap-2 border-b border-white/10 px-4 pb-4 pt-4">
+                        <Layers className="h-4 w-4 text-white/50" />
+                        <div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-white/70">表示レイヤー設定</div>
+                            <div className="mt-1 text-[11px] text-white/40">夜景ポテンシャルを中心に表示</div>
+                        </div>
+                    </div>
+
+                    <LayerSettings
+                        viirsEnabled={viirsEnabled}
+                        setViirsEnabled={setViirsEnabled}
+                        potentialEnabled={potentialEnabled}
+                        setPotentialEnabled={setPotentialEnabled}
+                        aerialEnabled={aerialEnabled}
+                        setAerialEnabled={setAerialEnabled}
+                    />
+
+                    <div className="flex-1 overflow-y-auto p-4">
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                            <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-white/70">
+                                <Sparkles className="h-4 w-4 text-violet-300" />
+                                夜景ポテンシャルの目安
+                            </div>
+                            <div className="mt-4 h-3 rounded-full bg-gradient-to-r from-[#223b83] via-[#29b47b] to-[#f4c84b]" />
+                            <div className="mt-2 flex justify-between text-[11px] text-white/45">
+                                <span>低い</span>
+                                <span>高い</span>
+                            </div>
+                            <label className="mt-5 block text-xs text-white/60" htmlFor="potential-opacity">
+                                不透明度: {Math.round(potentialOpacity * 100)}%
+                            </label>
+                            <input
+                                id="potential-opacity"
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                value={potentialOpacity}
+                                onChange={(event) => setPotentialOpacity(Number(event.target.value))}
+                                className="mt-3 h-1.5 w-full accent-emerald-400"
+                            />
+                            <p className="mt-4 text-xs leading-relaxed text-white/45">
+                                色が明るいエリアほど、夜景を見つけられる可能性が高い場所です。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </LayerMenu>
+
+            <CurrentLocationButton
+                onClick={handleLocate}
+                isNorthUp
+                className="absolute bottom-[calc(24px+env(safe-area-inset-bottom))] right-6 md:bottom-8 md:right-8"
+            />
+
+            {!isLoaded && (
+                <div className="absolute inset-0 z-[7000] grid place-items-center bg-black text-sm text-white/60">
+                    地図を読み込んでいます…
+                </div>
+            )}
+        </div>
+    );
+}

@@ -169,8 +169,8 @@ export function AppMenu({
                   />
                 </div>
               </>
-            ) : (
-              <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+            ) : fanConfig && onFanConfigChange ? (
+                <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                 <div>
                   <h3 className="text-sm font-semibold text-white/60 mb-3 px-2">スキャン設定</h3>
                   <div className="rounded-[1.5rem] bg-white/[0.03] border border-white/5 p-4 shadow-inner">
@@ -215,6 +215,15 @@ export function AppMenu({
                       Ray Spacingを小さくすると解析が精細になりますが、読み込みに時間がかかる場合があります。
                     </p>
                   </div>
+                </div>
+                </div>
+            ) : (
+              <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                <div className="rounded-[1.5rem] bg-white/[0.03] border border-white/5 p-5">
+                  <div className="text-sm font-semibold text-white/90">夜景ポテンシャルマップ</div>
+                  <p className="mt-2 text-xs leading-relaxed text-white/45">
+                    地図の色の濃淡から、夜景を見つけやすいエリアを確認できます。レイヤー設定は左側のパネルから変更できます。
+                  </p>
                 </div>
               </div>
             )}
