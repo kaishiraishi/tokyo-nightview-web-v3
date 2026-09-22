@@ -1,42 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import maplibregl from 'maplibre-gl';
 import { Layers, Sparkles } from 'lucide-react';
 import { LayerMenu } from '../layout/LayerMenu';
 import { LayerSettings } from '../layout/LayerSettings';
 import { TopBar } from '../layout/TopBar';
 import { CurrentLocationButton } from '../ui/CurrentLocationButton';
 import { DirectionalField } from '../directional-field/DirectionalField';
-import type { DirectionPeak } from '../directional-field/types';
 import { PolarHeatmap } from '../polar-heatmap/PolarHeatmap';
 import type { PolarPoint } from '../polar-heatmap/types';
+import { deriveDirectionPeaks, samplePotentialAround, type MapLocation } from '../../lib/potentialSampler';
 import { useMapLibre, POTENTIAL_LAYER_ID } from '../../hooks/useMapLibre';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import 'maplibre-gl/dist/maplibre-gl.css';
-
-const FIELD_PRESETS = {
-    rightFront: [
-        { angle: 58, strength: 0.98, spread: 56 },
-        { angle: 286, strength: 0.36, spread: 50 },
-        { angle: 180, strength: 0.08, spread: 44 },
-    ],
-    wideRight: [{ angle: 70, strength: 0.85, spread: 75 }],
-    twoDirections: [
-        { angle: 45, strength: 0.9, spread: 30 },
-        { angle: 280, strength: 0.55, spread: 40 },
-    ],
-    balanced: [{ angle: 0, strength: 0.5, spread: 180 }],
-} satisfies Record<string, DirectionPeak[]>;
-
-type FieldPreset = keyof typeof FIELD_PRESETS;
-
-const POLAR_POINTS: PolarPoint[] = [
-    { angle: 55, distance: 35, strength: 0.58, angleSpread: 22, distanceSpread: 0.09 },
-    { angle: 60, distance: 120, strength: 0.96, angleSpread: 27, distanceSpread: 0.12 },
-    { angle: 72, distance: 205, strength: 0.74, angleSpread: 34, distanceSpread: 0.1 },
-    { angle: 290, distance: 55, strength: 0.38, angleSpread: 30, distanceSpread: 0.11 },
-    { angle: 280, distance: 260, strength: 0.48, angleSpread: 38, distanceSpread: 0.14 },
-    { angle: 180, distance: 105, strength: 0.1, angleSpread: 44, distanceSpread: 0.14 },
-];
 
 const POLAR_ZOOM_LEVELS = [50, 100, 200, 500, 1000];
 
@@ -53,13 +29,54 @@ export function PotentialMapView() {
     const [viirsEnabled, setViirsEnabled] = useState(false);
     const [aerialEnabled, setAerialEnabled] = useState(false);
     const [potentialOpacity, setPotentialOpacity] = useState(0.82);
-    const [fieldPreset, setFieldPreset] = useState<FieldPreset>('rightFront');
+    const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
+    const [potentialPoints, setPotentialPoints] = useState<PolarPoint[]>([]);
+    const [isSampling, setIsSampling] = useState(false);
+    const [samplingError, setSamplingError] = useState<string | null>(null);
     const [maxDistance, setMaxDistance] = useState(200);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [locateError, setLocateError] = useState<string | null>(null);
+    const directionPeaks = useMemo(() => deriveDirectionPeaks(potentialPoints), [potentialPoints]);
+
+    useEffect(() => {
+        if (!map || !isLoaded) return;
+
+        const handleMapClick = async (event: maplibregl.MapMouseEvent) => {
+            const location = { lng: event.lngLat.lng, lat: event.lngLat.lat };
+            setSelectedLocation(location);
+            setPotentialPoints([]);
+            setSamplingError(null);
+            setIsSampling(true);
+
+            try {
+                const points = await samplePotentialAround(location);
+                if (points.length === 0) throw new Error('この地点のポテンシャルデータがありません');
+                setPotentialPoints(points);
+            } catch (error) {
+                setSamplingError(error instanceof Error ? error.message : 'ポテンシャルデータを取得できませんでした');
+            } finally {
+                setIsSampling(false);
+            }
+        };
+
+        map.on('click', handleMapClick);
+        return () => {
+            map.off('click', handleMapClick);
+        };
+    }, [isLoaded, map]);
+
+    useEffect(() => {
+        if (!map) return;
+        const marker = selectedLocation
+            ? new maplibregl.Marker({ color: '#a78bfa' }).setLngLat([selectedLocation.lng, selectedLocation.lat]).addTo(map)
+            : null;
+        return () => {
+            marker?.remove();
+        };
+    }, [map, selectedLocation]);
 
     useEffect(() => {
         if (!map || !isLoaded || !map.getLayer(POTENTIAL_LAYER_ID)) return;
@@ -193,35 +210,21 @@ export function PotentialMapView() {
                             </div>
 
                             <DirectionalField
-                                peaks={FIELD_PRESETS[fieldPreset]}
+                                peaks={directionPeaks}
                                 size={246}
                                 palette="opportunity"
                                 showForward
                                 interactive
                                 className="mx-auto mt-2"
                             />
-
-                            <div className="mt-2 grid grid-cols-2 gap-2">
-                                {([
-                                    ['rightFront', '右前方'],
-                                    ['wideRight', '右側広域'],
-                                    ['twoDirections', '二方向'],
-                                    ['balanced', '均一'],
-                                ] as const).map(([key, label]) => (
-                                    <button
-                                        key={key}
-                                        type="button"
-                                        onClick={() => setFieldPreset(key)}
-                                        className={`rounded-xl border px-2 py-2 text-xs font-semibold transition-all ${fieldPreset === key
-                                            ? 'border-violet-400/70 bg-violet-700 text-white shadow-lg shadow-violet-900/30'
-                                            : 'border-white/10 bg-white/[0.04] text-white/55 hover:bg-white/[0.08] hover:text-white'
-                                            }`}
-                                        aria-pressed={fieldPreset === key}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                            <div className="mt-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-center text-[11px] text-white/45">
+                                {isSampling
+                                    ? 'クリック地点の周囲をサンプリング中…'
+                                    : selectedLocation
+                                        ? `選択地点 ${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
+                                        : '地図上をクリックして地点を選択'}
                             </div>
+                            {samplingError && <p className="mt-2 text-center text-[11px] text-amber-200/80">{samplingError}</p>}
                         </div>
 
                         <div className="mt-4 rounded-2xl border border-white/10 bg-[#081019] p-3">
@@ -234,7 +237,7 @@ export function PotentialMapView() {
                             </div>
 
                             <PolarHeatmap
-                                points={POLAR_POINTS}
+                                points={potentialPoints}
                                 maxDistance={maxDistance}
                                 size={246}
                                 palette="thermal"
