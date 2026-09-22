@@ -6,6 +6,8 @@ import { TopBar } from '../layout/TopBar';
 import { CurrentLocationButton } from '../ui/CurrentLocationButton';
 import { DirectionalField } from '../directional-field/DirectionalField';
 import type { DirectionPeak } from '../directional-field/types';
+import { PolarHeatmap } from '../polar-heatmap/PolarHeatmap';
+import type { PolarPoint } from '../polar-heatmap/types';
 import { useMapLibre, POTENTIAL_LAYER_ID } from '../../hooks/useMapLibre';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
@@ -27,6 +29,21 @@ const FIELD_PRESETS = {
 
 type FieldPreset = keyof typeof FIELD_PRESETS;
 
+const POLAR_POINTS: PolarPoint[] = [
+    { angle: 55, distance: 35, strength: 0.58, angleSpread: 22, distanceSpread: 0.09 },
+    { angle: 60, distance: 120, strength: 0.96, angleSpread: 27, distanceSpread: 0.12 },
+    { angle: 72, distance: 205, strength: 0.74, angleSpread: 34, distanceSpread: 0.1 },
+    { angle: 290, distance: 55, strength: 0.38, angleSpread: 30, distanceSpread: 0.11 },
+    { angle: 280, distance: 260, strength: 0.48, angleSpread: 38, distanceSpread: 0.14 },
+    { angle: 180, distance: 105, strength: 0.1, angleSpread: 44, distanceSpread: 0.14 },
+];
+
+const POLAR_ZOOM_LEVELS = [50, 100, 200, 500, 1000];
+
+function formatDistance(distance: number) {
+    return distance >= 1000 ? `${distance / 1000} km` : `${distance} m`;
+}
+
 export function PotentialMapView() {
     const containerRef = useRef<HTMLDivElement>(null);
     const { map, isLoaded } = useMapLibre(containerRef);
@@ -37,6 +54,7 @@ export function PotentialMapView() {
     const [aerialEnabled, setAerialEnabled] = useState(false);
     const [potentialOpacity, setPotentialOpacity] = useState(0.82);
     const [fieldPreset, setFieldPreset] = useState<FieldPreset>('rightFront');
+    const [maxDistance, setMaxDistance] = useState(200);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -203,6 +221,57 @@ export function PotentialMapView() {
                                         {label}
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        <div className="mt-4 rounded-2xl border border-white/10 bg-[#081019] p-3">
+                            <div className="px-1">
+                                <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-white/75">
+                                    <Layers className="h-4 w-4 text-cyan-300" />
+                                    Polar Heatmap
+                                </div>
+                                <p className="mt-1 text-[11px] text-white/40">方向 × 距離 × 強度</p>
+                            </div>
+
+                            <PolarHeatmap
+                                points={POLAR_POINTS}
+                                maxDistance={maxDistance}
+                                size={246}
+                                palette="thermal"
+                                showGrid
+                                showCenter
+                                interactive
+                                className="mx-auto mt-2"
+                            />
+
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setMaxDistance((current) => POLAR_ZOOM_LEVELS[Math.max(0, POLAR_ZOOM_LEVELS.indexOf(current) - 1)])}
+                                    disabled={maxDistance === POLAR_ZOOM_LEVELS[0]}
+                                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-lg text-white/75 transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-30"
+                                    aria-label="表示距離を縮める"
+                                >
+                                    −
+                                </button>
+                                <div className="min-w-24 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center text-sm font-semibold tabular-nums text-white/90">
+                                    {formatDistance(maxDistance)}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setMaxDistance((current) => POLAR_ZOOM_LEVELS[Math.min(POLAR_ZOOM_LEVELS.length - 1, POLAR_ZOOM_LEVELS.indexOf(current) + 1)])}
+                                    disabled={maxDistance === POLAR_ZOOM_LEVELS[POLAR_ZOOM_LEVELS.length - 1]}
+                                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-lg text-white/75 transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-30"
+                                    aria-label="表示距離を広げる"
+                                >
+                                    ＋
+                                </button>
+                            </div>
+
+                            <div className="mt-3 h-2 rounded-full bg-gradient-to-r from-[#071B57] via-[#31C9DD] via-55% to-[#EF3423]" />
+                            <div className="mt-1 flex justify-between text-[10px] text-white/35">
+                                <span>LOW</span>
+                                <span>HIGH</span>
                             </div>
                         </div>
                     </div>
