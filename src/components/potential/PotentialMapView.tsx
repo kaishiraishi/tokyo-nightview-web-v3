@@ -4,10 +4,28 @@ import { LayerMenu } from '../layout/LayerMenu';
 import { LayerSettings } from '../layout/LayerSettings';
 import { TopBar } from '../layout/TopBar';
 import { CurrentLocationButton } from '../ui/CurrentLocationButton';
+import { DirectionalField } from '../directional-field/DirectionalField';
+import type { DirectionPeak } from '../directional-field/types';
 import { useMapLibre, POTENTIAL_LAYER_ID } from '../../hooks/useMapLibre';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import 'maplibre-gl/dist/maplibre-gl.css';
+
+const FIELD_PRESETS = {
+    rightFront: [
+        { angle: 58, strength: 0.98, spread: 56 },
+        { angle: 286, strength: 0.36, spread: 50 },
+        { angle: 180, strength: 0.08, spread: 44 },
+    ],
+    wideRight: [{ angle: 70, strength: 0.85, spread: 75 }],
+    twoDirections: [
+        { angle: 45, strength: 0.9, spread: 30 },
+        { angle: 280, strength: 0.55, spread: 40 },
+    ],
+    balanced: [{ angle: 0, strength: 0.5, spread: 180 }],
+} satisfies Record<string, DirectionPeak[]>;
+
+type FieldPreset = keyof typeof FIELD_PRESETS;
 
 export function PotentialMapView() {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -18,6 +36,7 @@ export function PotentialMapView() {
     const [viirsEnabled, setViirsEnabled] = useState(false);
     const [aerialEnabled, setAerialEnabled] = useState(false);
     const [potentialOpacity, setPotentialOpacity] = useState(0.82);
+    const [fieldPreset, setFieldPreset] = useState<FieldPreset>('rightFront');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -142,6 +161,49 @@ export function PotentialMapView() {
                             <p className="mt-4 text-xs leading-relaxed text-white/45">
                                 色が明るいエリアほど、夜景を見つけられる可能性が高い場所です。
                             </p>
+                        </div>
+
+                        <div className="mt-4 rounded-2xl border border-white/10 bg-[#080c10] p-3">
+                            <div className="flex items-center justify-between gap-3 px-1">
+                                <div>
+                                    <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-white/75">
+                                        <Sparkles className="h-4 w-4 text-violet-300" />
+                                        Directional Field
+                                    </div>
+                                    <p className="mt-1 text-[11px] text-white/40">周囲の強い方向を気配で表示</p>
+                                </div>
+                            </div>
+
+                            <DirectionalField
+                                peaks={FIELD_PRESETS[fieldPreset]}
+                                size={246}
+                                palette="opportunity"
+                                showForward
+                                interactive
+                                className="mx-auto mt-2"
+                            />
+
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                                {([
+                                    ['rightFront', '右前方'],
+                                    ['wideRight', '右側広域'],
+                                    ['twoDirections', '二方向'],
+                                    ['balanced', '均一'],
+                                ] as const).map(([key, label]) => (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        onClick={() => setFieldPreset(key)}
+                                        className={`rounded-xl border px-2 py-2 text-xs font-semibold transition-all ${fieldPreset === key
+                                            ? 'border-violet-400/70 bg-violet-700 text-white shadow-lg shadow-violet-900/30'
+                                            : 'border-white/10 bg-white/[0.04] text-white/55 hover:bg-white/[0.08] hover:text-white'
+                                            }`}
+                                        aria-pressed={fieldPreset === key}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
