@@ -12,4 +12,4 @@ export type PolarSample = {
     strength: number;
 };
 
-export type PolarPalette = 'thermal' | 'signal' | 'cool';
+export type PolarPalette = 'thermal' | 'signal' | 'cool' | 'potential';

@@ -16,17 +16,17 @@ type ColorRampStop = {
 
 const TILE_SIZE = 256;
 const SAMPLE_ZOOM = 14;
-const MAX_POTENTIAL_VALUE = 0.4;
+export const MAX_POTENTIAL_VALUE = 0.1635;
 const TILE_CACHE = new Map<string, Promise<TileData | null>>();
 
 // Keep this in sync with scripts/make-potential-tiles.sh.
-const COLOR_RAMP: ColorRampStop[] = [
-    { value: 0, color: [0, 0, 0, 0] },
-    { value: 0.01, color: [0, 50, 150, 100] },
-    { value: 0.1, color: [0, 200, 100, 150] },
-    { value: 0.2, color: [100, 255, 100, 200] },
-    { value: 0.3, color: [255, 255, 0, 220] },
-    { value: 0.4, color: [255, 0, 0, 250] },
+export const POTENTIAL_COLOR_RAMP: ColorRampStop[] = [
+    { value: 0, color: [20, 18, 30, 40] },
+    { value: 2.58e-13, color: [38, 25, 74, 90] },
+    { value: 0.000397, color: [86, 35, 102, 140] },
+    { value: 0.0482, color: [190, 75, 70, 200] },
+    { value: 0.1635, color: [255, 166, 0, 235] },
+    { value: 0.8848, color: [255, 239, 120, 255] },
 ];
 
 function locationToTilePixel(location: MapLocation, zoom: number) {
@@ -75,15 +75,15 @@ async function loadTile(tileX: number, tileY: number, zoom: number) {
     return request;
 }
 
-function rampValue(pixel: [number, number, number, number]) {
+export function potentialValueFromPixel(pixel: [number, number, number, number]) {
     if (pixel[3] < 8) return 0;
 
     let bestValue = 0;
     let bestError = Number.POSITIVE_INFINITY;
 
-    for (let index = 0; index < COLOR_RAMP.length - 1; index += 1) {
-        const start = COLOR_RAMP[index];
-        const end = COLOR_RAMP[index + 1];
+    for (let index = 0; index < POTENTIAL_COLOR_RAMP.length - 1; index += 1) {
+        const start = POTENTIAL_COLOR_RAMP[index];
+        const end = POTENTIAL_COLOR_RAMP[index + 1];
         const vector = end.color.map((value, channel) => value - start.color[channel]);
         const point = pixel.map((value, channel) => value - start.color[channel]);
         const denominator = vector.reduce((sum, value) => sum + value * value, 0);
@@ -104,6 +104,14 @@ function rampValue(pixel: [number, number, number, number]) {
     return Math.max(0, Math.min(MAX_POTENTIAL_VALUE, bestValue));
 }
 
+export function applyPotentialThreshold(pixels: Uint8ClampedArray, threshold: number) {
+    for (let offset = 0; offset < pixels.length; offset += 4) {
+        const value = potentialValueFromPixel([pixels[offset], pixels[offset + 1], pixels[offset + 2], pixels[offset + 3]]);
+        if (value < threshold) pixels[offset + 3] = 0;
+    }
+    return pixels;
+}
+
 async function samplePotentialValue(location: MapLocation) {
     const { tileX, tileY, pixelX, pixelY } = locationToTilePixel(location, SAMPLE_ZOOM);
     const tile = await loadTile(tileX, tileY, SAMPLE_ZOOM);
@@ -117,7 +125,7 @@ async function samplePotentialValue(location: MapLocation) {
         tile.pixels[pixelIndex + 3],
     ];
 
-    return rampValue(pixel);
+    return potentialValueFromPixel(pixel);
 }
 
 function destinationPoint(origin: MapLocation, angle: number, distance: number): MapLocation {
@@ -141,23 +149,45 @@ function destinationPoint(origin: MapLocation, angle: number, distance: number):
     };
 }
 
-export async function samplePotentialAround(origin: MapLocation): Promise<PolarPoint[]> {
-    const angles = Array.from({ length: 24 }, (_, index) => index * 15);
-    const distances = [0, 25, 50, 100, 200, 350, 500, 750, 1000];
-    const samples = await Promise.all(
-        angles.flatMap((angle) => distances.map(async (distance) => ({
-            angle,
-            distance,
-            strength: await samplePotentialValue(destinationPoint(origin, angle, distance)),
-        }))),
+export const SAMPLE_BEARINGS = Array.from({ length: 24 }, (_, index) => index * 15);
+export const SAMPLE_DISTANCES = [0, 25, 50, 100, 200, 350, 500, 750, 1000];
+
+// value は PNG の RGBA から色ランプを逆引きした近似値であり、Float32 の真値ではない。
+export type PotentialRawSample = {
+    bearing: number;
+    distance: number;
+    value: number | null;
+};
+
+// 中心 (distance = 0) は 1 回だけ取得し、全方位で共有する。
+export async function samplePotentialGrid(origin: MapLocation): Promise<PotentialRawSample[]> {
+    const centerValue = samplePotentialValue(origin);
+    const rings = await Promise.all(
+        SAMPLE_DISTANCES.map(async (distance) => {
+            if (distance === 0) {
+                const value = await centerValue;
+                return SAMPLE_BEARINGS.map((bearing) => ({ bearing, distance, value }));
+            }
+            return Promise.all(
+                SAMPLE_BEARINGS.map(async (bearing) => ({
+                    bearing,
+                    distance,
+                    value: await samplePotentialValue(destinationPoint(origin, bearing, distance)),
+                })),
+            );
+        }),
     );
 
+    return rings.flat();
+}
+
+export function polarPointsFromGrid(samples: PotentialRawSample[]): PolarPoint[] {
     return samples
-        .filter((sample): sample is { angle: number; distance: number; strength: number } => sample.strength !== null)
+        .filter((sample): sample is PotentialRawSample & { value: number } => sample.value !== null)
         .map((sample) => ({
-            angle: sample.angle,
+            angle: sample.bearing,
             distance: sample.distance,
-            strength: Math.max(0, Math.min(1, sample.strength / MAX_POTENTIAL_VALUE)),
+            strength: Math.max(0, Math.min(1, sample.value / MAX_POTENTIAL_VALUE)),
         }));
 }
 

@@ -1,20 +1,36 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
-import { Layers, Sparkles } from 'lucide-react';
+import { ExternalLink, Layers, Sparkles } from 'lucide-react';
 import { LayerMenu } from '../layout/LayerMenu';
 import { LayerSettings } from '../layout/LayerSettings';
 import { TopBar } from '../layout/TopBar';
 import { CurrentLocationButton } from '../ui/CurrentLocationButton';
 import { DirectionalField } from '../directional-field/DirectionalField';
 import { PolarHeatmap } from '../polar-heatmap/PolarHeatmap';
-import type { PolarPoint } from '../polar-heatmap/types';
-import { deriveDirectionPeaks, samplePotentialAround, type MapLocation } from '../../lib/potentialSampler';
-import { useMapLibre, POTENTIAL_LAYER_ID } from '../../hooks/useMapLibre';
+import { PrototypePanel } from './prototypes/PrototypePanel';
+import { POTENTIAL_RANGES, type PotentialRange, type PrototypeType } from './prototypes/types';
+import { deriveDirectionPeaks, polarPointsFromGrid, type MapLocation } from '../../lib/potentialSampler';
+import { usePotentialAnalysis } from '../../hooks/usePotentialAnalysis';
+import { useMapLibre, POTENTIAL_MODES, POTENTIAL_FILTERED_LAYER_PREFIX } from '../../hooks/useMapLibre';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-const POLAR_ZOOM_LEVELS = [50, 100, 200, 500, 1000];
+// 地図の手がかり量は「絞って探す」に固定
+const POTENTIAL_MODE_ID = 'focused';
+
+const POLAR_ZOOM_LEVELS = POTENTIAL_RANGES;
+
+type PanelView = 'current' | PrototypeType | 'compare';
+
+const PANEL_VIEWS: { id: PanelView; label: string }[] = [
+    { id: 'current', label: '現状' },
+    { id: 'field', label: 'Field' },
+    { id: 'polar', label: 'Polar' },
+    { id: 'bands', label: 'Bands' },
+    { id: 'peaks', label: 'Peaks' },
+    { id: 'compare', label: '比較' },
+];
 
 function formatDistance(distance: number) {
     return distance >= 1000 ? `${distance / 1000} km` : `${distance} m`;
@@ -30,36 +46,26 @@ export function PotentialMapView() {
     const [aerialEnabled, setAerialEnabled] = useState(false);
     const [potentialOpacity, setPotentialOpacity] = useState(0.82);
     const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
-    const [potentialPoints, setPotentialPoints] = useState<PolarPoint[]>([]);
-    const [isSampling, setIsSampling] = useState(false);
-    const [samplingError, setSamplingError] = useState<string | null>(null);
-    const [maxDistance, setMaxDistance] = useState(200);
+    const [panelView, setPanelView] = useState<PanelView>('current');
+    const [maxDistance, setMaxDistance] = useState<PotentialRange>(200);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
     const [locateError, setLocateError] = useState<string | null>(null);
+    const { rawSamples, viewModel, isLoading: isSampling, error: samplingError } = usePotentialAnalysis({
+        center: selectedLocation,
+        range: maxDistance,
+        threshold: POTENTIAL_MODES.find((mode) => mode.id === POTENTIAL_MODE_ID)!.threshold,
+    });
+    const potentialPoints = useMemo(() => (rawSamples ? polarPointsFromGrid(rawSamples) : []), [rawSamples]);
     const directionPeaks = useMemo(() => deriveDirectionPeaks(potentialPoints), [potentialPoints]);
 
     useEffect(() => {
         if (!map || !isLoaded) return;
 
-        const handleMapClick = async (event: maplibregl.MapMouseEvent) => {
-            const location = { lng: event.lngLat.lng, lat: event.lngLat.lat };
-            setSelectedLocation(location);
-            setPotentialPoints([]);
-            setSamplingError(null);
-            setIsSampling(true);
-
-            try {
-                const points = await samplePotentialAround(location);
-                if (points.length === 0) throw new Error('この地点のポテンシャルデータがありません');
-                setPotentialPoints(points);
-            } catch (error) {
-                setSamplingError(error instanceof Error ? error.message : 'ポテンシャルデータを取得できませんでした');
-            } finally {
-                setIsSampling(false);
-            }
+        const handleMapClick = (event: maplibregl.MapMouseEvent) => {
+            setSelectedLocation({ lng: event.lngLat.lng, lat: event.lngLat.lat });
         };
 
         map.on('click', handleMapClick);
@@ -79,9 +85,13 @@ export function PotentialMapView() {
     }, [map, selectedLocation]);
 
     useEffect(() => {
-        if (!map || !isLoaded || !map.getLayer(POTENTIAL_LAYER_ID)) return;
-        map.setLayoutProperty(POTENTIAL_LAYER_ID, 'visibility', potentialEnabled ? 'visible' : 'none');
-        map.setPaintProperty(POTENTIAL_LAYER_ID, 'raster-opacity', potentialOpacity);
+        if (!map || !isLoaded) return;
+        for (const mode of POTENTIAL_MODES) {
+            const layerId = `${POTENTIAL_FILTERED_LAYER_PREFIX}${mode.id}`;
+            if (!map.getLayer(layerId)) continue;
+            map.setLayoutProperty(layerId, 'visibility', potentialEnabled && mode.id === POTENTIAL_MODE_ID ? 'visible' : 'none');
+            map.setPaintProperty(layerId, 'raster-opacity', potentialOpacity);
+        }
     }, [map, isLoaded, potentialEnabled, potentialOpacity]);
 
     useEffect(() => {
@@ -121,6 +131,23 @@ export function PotentialMapView() {
         }
         map.flyTo({ center: [currentLocation.lng, currentLocation.lat], zoom: 14, duration: 1200 });
     }, [currentLocation, map]);
+
+    const streetViewBlock = selectedLocation ? (
+            <div className="mt-3 border-t border-white/10 pt-3">
+                <a
+                    href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedLocation.lat},${selectedLocation.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-300/[0.08] px-3 py-2 text-center text-xs font-semibold text-sky-100 transition-colors hover:border-sky-200/50 hover:bg-sky-300/[0.14]"
+                >
+                    <span>Google マップで周辺のストリートビューを探す</span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                </a>
+                <p className="mt-2 text-center text-[10px] leading-relaxed text-white/40">
+                    選択地点に画像がない場合は、近くの場所が表示されることがあります。Google マップが別タブで開きます。
+                </p>
+            </div>
+    ) : null;
 
     return (
         <div className="relative h-full w-full text-white">
@@ -175,7 +202,13 @@ export function PotentialMapView() {
                                 <Sparkles className="h-4 w-4 text-violet-300" />
                                 夜景ポテンシャルの目安
                             </div>
-                            <div className="mt-4 h-3 rounded-full bg-gradient-to-r from-[#223b83] via-[#29b47b] to-[#f4c84b]" />
+                            <div
+                                className="mt-4 h-3 rounded-full"
+                                style={{
+                                    background:
+                                        'linear-gradient(to right, rgba(20,18,30,0.16), rgba(38,25,74,0.35), rgba(86,35,102,0.55), rgba(190,75,70,0.78), rgba(255,166,0,0.92), rgba(255,239,120,1))',
+                                }}
+                            />
                             <div className="mt-2 flex justify-between text-[11px] text-white/45">
                                 <span>低い</span>
                                 <span>高い</span>
@@ -198,6 +231,44 @@ export function PotentialMapView() {
                             </p>
                         </div>
 
+                        <div className="mt-4 inline-flex w-full rounded-xl bg-white/5 p-1 ring-1 ring-white/10" role="group" aria-label="方向・距離表示の切り替え">
+                            {PANEL_VIEWS.map((view) => (
+                                <button
+                                    key={view.id}
+                                    type="button"
+                                    aria-pressed={panelView === view.id}
+                                    onClick={() => setPanelView(view.id)}
+                                    className={`flex-1 whitespace-nowrap rounded-lg px-1 py-2 text-xs font-medium transition-colors ${panelView === view.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80'}`}
+                                >
+                                    {view.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {panelView !== 'current' && (
+                            <div className="mt-4">
+                                <PrototypePanel
+                                    data={viewModel}
+                                    type={panelView}
+                                    isUpdating={isSampling}
+                                    range={maxDistance}
+                                    onRangeChange={setMaxDistance}
+                                    error={samplingError}
+                                    status={
+                                        isSampling
+                                            ? 'クリック地点の周囲をサンプリング中…'
+                                            : selectedLocation
+                                                ? `選択地点 ${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
+                                                : '地図上をクリックして地点を選択'
+                                    }
+                                >
+                                    {streetViewBlock && <div className="rounded-2xl border border-white/10 bg-zinc-950/90 px-3 pb-3">{streetViewBlock}</div>}
+                                </PrototypePanel>
+                            </div>
+                        )}
+
+                        {panelView === 'current' && (
+                            <>
                         <div className="mt-4 rounded-2xl border border-white/10 bg-[#080c10] p-3">
                             <div className="flex items-center justify-between gap-3 px-1">
                                 <div>
@@ -225,6 +296,7 @@ export function PotentialMapView() {
                                         : '地図上をクリックして地点を選択'}
                             </div>
                             {samplingError && <p className="mt-2 text-center text-[11px] text-amber-200/80">{samplingError}</p>}
+                            {streetViewBlock}
                         </div>
 
                         <div className="mt-4 rounded-2xl border border-white/10 bg-[#081019] p-3">
@@ -240,7 +312,7 @@ export function PotentialMapView() {
                                 points={potentialPoints}
                                 maxDistance={maxDistance}
                                 size={246}
-                                palette="thermal"
+                                palette="potential"
                                 showGrid
                                 showCenter
                                 interactive
@@ -271,12 +343,20 @@ export function PotentialMapView() {
                                 </button>
                             </div>
 
-                            <div className="mt-3 h-2 rounded-full bg-gradient-to-r from-[#071B57] via-[#31C9DD] via-55% to-[#EF3423]" />
+                            <div
+                                className="mt-3 h-2 rounded-full"
+                                style={{
+                                    background:
+                                        'linear-gradient(to right, rgba(20,18,30,0.16), rgba(38,25,74,0.35), rgba(190,75,70,0.78), rgba(255,166,0,0.92))',
+                                }}
+                            />
                             <div className="mt-1 flex justify-between text-[10px] text-white/35">
                                 <span>LOW</span>
                                 <span>HIGH</span>
                             </div>
                         </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </LayerMenu>

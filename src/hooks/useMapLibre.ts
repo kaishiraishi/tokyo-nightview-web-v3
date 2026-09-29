@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, type RefObject } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
 import { DEFAULT_STYLE } from '../config/mapStyles';
+import { applyPotentialThreshold } from '../lib/potentialSampler';
 
 // ============================================
 // PLATEAU MVT Configuration
@@ -34,6 +35,47 @@ const VIIRS_LAYER_ID = 'viirs-nightlight-layer';
 
 export const POTENTIAL_SOURCE_ID = 'potential-nightview';
 export const POTENTIAL_LAYER_ID = 'potential-nightview-layer';
+export const POTENTIAL_MODES = [
+    { id: 'wide', threshold: 0.00025, label: '広く探す', description: '弱い気配も含めて、周辺を広く見渡す' },
+    { id: 'clue', threshold: 0.0015, label: '手がかり', description: '見つけやすい候補を手がかりにする' },
+    { id: 'focused', threshold: 0.006, label: '絞って探す', description: '強い候補に絞って探す' },
+] as const;
+export const POTENTIAL_FILTERED_LAYER_PREFIX = 'potential-filtered-';
+
+const FILTERED_POTENTIAL_PROTOCOL = 'potential-filtered';
+const TILE_SIZE = 256;
+
+maplibregl.addProtocol(FILTERED_POTENTIAL_PROTOCOL, async (request) => {
+    const requestUrl = new URL(request.url);
+    const [zoom, x, rawY] = requestUrl.pathname.split('/').filter(Boolean);
+    const y = rawY?.replace(/\.png$/, '');
+    const threshold = Number(requestUrl.searchParams.get('threshold'));
+    if (!zoom || !x || !y || !Number.isFinite(threshold)) {
+        throw new Error(`Invalid filtered potential tile URL: ${request.url}`);
+    }
+    const tileUrl = `${import.meta.env.BASE_URL}NightViewPotential_tiles/${zoom}/${x}/${y}.png`;
+    const response = await fetch(tileUrl);
+    if (!response.ok) throw new Error(`Potential tile request failed: ${response.status}`);
+
+    const bitmap = await createImageBitmap(await response.blob());
+    const canvas = document.createElement('canvas');
+    canvas.width = TILE_SIZE;
+    canvas.height = TILE_SIZE;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+        bitmap.close();
+        throw new Error('Could not process potential tile');
+    }
+    context.drawImage(bitmap, 0, 0, TILE_SIZE, TILE_SIZE);
+    bitmap.close();
+    const image = context.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+    applyPotentialThreshold(image.data, threshold);
+    context.putImageData(image, 0, 0);
+    const png = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not encode potential tile')), 'image/png');
+    });
+    return { data: await png.arrayBuffer() };
+});
 
 const AERIAL_SOURCE_ID = 'aerial-photo';
 const AERIAL_LAYER_ID = 'aerial-photo-layer';
@@ -68,31 +110,48 @@ function addVIIRSNightLight(map: maplibregl.Map) {
 }
 
 function addPotentialLayer(map: maplibregl.Map) {
+    for (const mode of POTENTIAL_MODES) {
+        const sourceId = `${POTENTIAL_FILTERED_LAYER_PREFIX}source-${mode.id}`;
+        const layerId = `${POTENTIAL_FILTERED_LAYER_PREFIX}${mode.id}`;
+        if (!map.getSource(sourceId)) {
+            map.addSource(sourceId, {
+                type: 'raster',
+                tiles: [`${FILTERED_POTENTIAL_PROTOCOL}://tiles/{z}/{x}/{y}.png?threshold=${mode.threshold}`],
+                tileSize: TILE_SIZE,
+                minzoom: 10,
+                maxzoom: 14,
+            });
+        }
+        if (!map.getLayer(layerId)) {
+            const firstSymbolId = map.getStyle().layers?.find((l) => l.type === 'symbol')?.id;
+            map.addLayer({
+                id: layerId,
+                type: 'raster',
+                source: sourceId,
+                layout: { visibility: 'none' },
+                paint: { 'raster-opacity': 0.8 },
+            }, firstSymbolId);
+        }
+    }
+    // Keep the legacy layer id available to existing callers while the active mode is a filtered layer.
     if (!map.getSource(POTENTIAL_SOURCE_ID)) {
         map.addSource(POTENTIAL_SOURCE_ID, {
             type: 'raster',
             tiles: [`${import.meta.env.BASE_URL}NightViewPotential_tiles/{z}/{x}/{y}.png`],
-            tileSize: 256,
+            tileSize: TILE_SIZE,
             minzoom: 10,
             maxzoom: 14,
         });
-        console.log('[Potential] Source added');
     }
-
     if (!map.getLayer(POTENTIAL_LAYER_ID)) {
-        const firstSymbolId = map.getStyle().layers?.find((l) => l.type === 'symbol')?.id;
+        const firstSymbolId = map.getStyle().layers?.find((layer) => layer.type === 'symbol')?.id;
         map.addLayer({
             id: POTENTIAL_LAYER_ID,
             type: 'raster',
             source: POTENTIAL_SOURCE_ID,
-            layout: {
-                visibility: 'none',
-            },
-            paint: {
-                'raster-opacity': 0.8,
-            },
+            layout: { visibility: 'none' },
+            paint: { 'raster-opacity': 0.8 },
         }, firstSymbolId);
-        console.log('[Potential] Layer added');
     }
 }
 

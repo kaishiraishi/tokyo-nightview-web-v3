@@ -1,7 +1,7 @@
 import type { PolarPalette } from './types';
 
 type Rgb = { r: number; g: number; b: number };
-type ColorStop = { value: number; color: string };
+type ColorStop = { value: number; color: string; alpha?: number };
 
 const PALETTES: Record<PolarPalette, ColorStop[]> = {
     thermal: [
@@ -26,6 +26,16 @@ const PALETTES: Record<PolarPalette, ColorStop[]> = {
         { value: 0.7, color: '#37B8D0' },
         { value: 1, color: '#BCEBFF' },
     ],
+    // Mirrors the potential tile color ramp (scripts/make-potential-tiles.sh),
+    // normalized against MAX_POTENTIAL_VALUE (src/lib/potentialSampler.ts).
+    // Alpha rises with value so low potential fades into the dark canvas
+    // background instead of painting a flat, opaque field (glow-style heatmap).
+    potential: [
+        { value: 0, color: '#14121e', alpha: 0.16 },
+        { value: 0.00243, color: '#26194a', alpha: 0.35 },
+        { value: 0.2948, color: '#be4b46', alpha: 0.78 },
+        { value: 1, color: '#ffa600', alpha: 0.92 },
+    ],
 };
 
 function parseHex(hex: string): Rgb {
@@ -46,18 +56,24 @@ export function colorForStrength(value: number, palette: PolarPalette, alpha = 1
     const normalized = Math.max(0, Math.min(1, value));
     const upperIndex = stops.findIndex((stop) => stop.value >= normalized);
 
-    if (upperIndex <= 0) return toRgba(parseHex(stops[0].color), alpha);
-    if (upperIndex === -1) return toRgba(parseHex(stops[stops.length - 1].color), alpha);
+    const stopAlpha = (stop: ColorStop) => (stop.alpha ?? 1) * alpha;
+
+    if (upperIndex <= 0) return toRgba(parseHex(stops[0].color), stopAlpha(stops[0]));
+    if (upperIndex === -1) {
+        const last = stops[stops.length - 1];
+        return toRgba(parseHex(last.color), stopAlpha(last));
+    }
 
     const lower = stops[upperIndex - 1];
     const upper = stops[upperIndex];
     const progress = (normalized - lower.value) / (upper.value - lower.value);
     const lowerRgb = parseHex(lower.color);
     const upperRgb = parseHex(upper.color);
+    const blendedAlpha = stopAlpha(lower) + (stopAlpha(upper) - stopAlpha(lower)) * progress;
 
     return toRgba({
         r: lowerRgb.r + (upperRgb.r - lowerRgb.r) * progress,
         g: lowerRgb.g + (upperRgb.g - lowerRgb.g) * progress,
         b: lowerRgb.b + (upperRgb.b - lowerRgb.b) * progress,
-    }, alpha);
+    }, blendedAlpha);
 }
