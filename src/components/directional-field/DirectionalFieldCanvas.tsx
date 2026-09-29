@@ -159,7 +159,7 @@ export function DirectionalFieldCanvas({
             ref={canvasRef}
             width={size}
             height={size}
-            className="block touch-none rounded-full"
+            className="block touch-pan-y rounded-full"
             onPointerMove={interactive ? (event) => onHover(directionFromPointer(event)) : undefined}
             onPointerLeave={interactive ? () => onHover(null) : undefined}
             onPointerDown={interactive ? (event) => onSelect(directionFromPointer(event)) : undefined}

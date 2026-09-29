@@ -8,7 +8,8 @@ import { CurrentLocationButton } from '../ui/CurrentLocationButton';
 import { DirectionalField } from '../directional-field/DirectionalField';
 import { PolarHeatmap } from '../polar-heatmap/PolarHeatmap';
 import { PrototypePanel } from './prototypes/PrototypePanel';
-import { POTENTIAL_RANGES, type PotentialRange, type PrototypeType } from './prototypes/types';
+import { PANEL_VIEWS, readStoredPanelView, type PanelView, writeStoredPanelView } from './PanelViewSelector';
+import { POTENTIAL_RANGES, type PotentialRange } from './prototypes/types';
 import { deriveDirectionPeaks, polarPointsFromGrid, type MapLocation } from '../../lib/potentialSampler';
 import { usePotentialAnalysis } from '../../hooks/usePotentialAnalysis';
 import { useMapLibre, POTENTIAL_MODES, POTENTIAL_FILTERED_LAYER_PREFIX } from '../../hooks/useMapLibre';
@@ -21,14 +22,9 @@ const POTENTIAL_MODE_ID = 'focused';
 
 const POLAR_ZOOM_LEVELS = POTENTIAL_RANGES;
 
-type PanelView = 'current' | PrototypeType | 'compare';
-
-const PANEL_VIEWS: { id: PanelView; label: string }[] = [
-    { id: 'current', label: '現状' },
-    { id: 'field', label: 'Field' },
-    { id: 'polar', label: 'Polar' },
-    { id: 'compare', label: '比較' },
-];
+function getIsMobileViewport() {
+    return typeof window !== 'undefined' && window.innerWidth < 768;
+}
 
 function formatDistance(distance: number) {
     return distance >= 1000 ? `${distance / 1000} km` : `${distance} m`;
@@ -38,13 +34,14 @@ export function PotentialMapView() {
     const containerRef = useRef<HTMLDivElement>(null);
     const { map, isLoaded } = useMapLibre(containerRef);
     const { location: currentLocation } = useGeolocation();
-    const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(true);
+    const [isMobileViewport, setIsMobileViewport] = useState(getIsMobileViewport);
+    const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(() => !getIsMobileViewport());
     const [potentialEnabled, setPotentialEnabled] = useState(true);
     const [viirsEnabled, setViirsEnabled] = useState(false);
     const [aerialEnabled, setAerialEnabled] = useState(false);
     const [potentialOpacity, setPotentialOpacity] = useState(0.82);
     const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
-    const [panelView, setPanelView] = useState<PanelView>('current');
+    const [panelView, setPanelView] = useState<PanelView>(() => readStoredPanelView());
     const [maxDistance, setMaxDistance] = useState<PotentialRange>(200);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
@@ -58,6 +55,13 @@ export function PotentialMapView() {
     });
     const potentialPoints = useMemo(() => (rawSamples ? polarPointsFromGrid(rawSamples) : []), [rawSamples]);
     const directionPeaks = useMemo(() => deriveDirectionPeaks(potentialPoints), [potentialPoints]);
+    const currentPanelViewLabel = PANEL_VIEWS.find((view) => view.id === panelView)?.label ?? '現状';
+
+    useEffect(() => {
+        const handleViewportResize = () => setIsMobileViewport(getIsMobileViewport());
+        window.addEventListener('resize', handleViewportResize);
+        return () => window.removeEventListener('resize', handleViewportResize);
+    }, []);
 
     useEffect(() => {
         if (!map || !isLoaded) return;
@@ -130,6 +134,10 @@ export function PotentialMapView() {
         map.flyTo({ center: [currentLocation.lng, currentLocation.lat], zoom: 14, duration: 1200 });
     }, [currentLocation, map]);
 
+    const handlePanelViewChange = useCallback((nextPanelView: PanelView) => {
+        setPanelView(writeStoredPanelView(nextPanelView));
+    }, []);
+
     const streetViewBlock = selectedLocation ? (
             <div className="mt-3 border-t border-white/10 pt-3">
                 <a
@@ -164,27 +172,28 @@ export function PotentialMapView() {
                 onCloseResults={() => setShowResults(false)}
                 onFocusSearch={() => searchResults.length > 0 && setShowResults(true)}
                 postCount={0}
+                panelView={panelView}
+                onPanelViewChange={handlePanelViewChange}
             />
 
             <div className="absolute top-36 left-4 right-4 z-[7000] flex flex-col gap-2 pointer-events-none md:left-auto md:right-4 md:w-[520px]">
                 {locateError && (
                     <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-full border border-white/20 bg-red-500/95 px-4 py-2 text-xs font-bold text-white shadow-lg">
                         <span>{locateError}</span>
-                        <button type="button" onClick={() => setLocateError(null)} className="rounded-full p-1 hover:bg-white/20" aria-label="エラーを閉じる">✕</button>
+                        <button
+                            type="button"
+                            onClick={() => setLocateError(null)}
+                            className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/20"
+                            aria-label="エラーを閉じる"
+                        >
+                            ✕
+                        </button>
                     </div>
                 )}
             </div>
 
             <LayerMenu isOpen={isLayerMenuOpen} onToggle={() => setIsLayerMenuOpen((open) => !open)}>
                 <div className="flex h-full flex-col bg-transparent text-white">
-                    <div className="flex items-center gap-2 border-b border-white/10 px-4 pb-4 pt-4">
-                        <Layers className="h-4 w-4 text-white/50" />
-                        <div>
-                            <div className="text-xs font-bold uppercase tracking-wider text-white/70">表示レイヤー設定</div>
-                            <div className="mt-1 text-[11px] text-white/40">夜景ポテンシャルを中心に表示</div>
-                        </div>
-                    </div>
-
                     <LayerSettings
                         viirsEnabled={viirsEnabled}
                         setViirsEnabled={setViirsEnabled}
@@ -229,18 +238,8 @@ export function PotentialMapView() {
                             </p>
                         </div>
 
-                        <div className="mt-4 inline-flex w-full rounded-xl bg-white/5 p-1 ring-1 ring-white/10" role="group" aria-label="方向・距離表示の切り替え">
-                            {PANEL_VIEWS.map((view) => (
-                                <button
-                                    key={view.id}
-                                    type="button"
-                                    aria-pressed={panelView === view.id}
-                                    onClick={() => setPanelView(view.id)}
-                                    className={`flex-1 whitespace-nowrap rounded-lg px-1 py-2 text-xs font-medium transition-colors ${panelView === view.id ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80'}`}
-                                >
-                                    {view.label}
-                                </button>
-                            ))}
+                        <div className="mt-4 text-[11px] leading-relaxed text-white/50">
+                            表示は メニュー → 設定 で切替（現在: {currentPanelViewLabel}）
                         </div>
 
                         {panelView !== 'current' && (
@@ -322,7 +321,7 @@ export function PotentialMapView() {
                                     type="button"
                                     onClick={() => setMaxDistance((current) => POLAR_ZOOM_LEVELS[Math.max(0, POLAR_ZOOM_LEVELS.indexOf(current) - 1)])}
                                     disabled={maxDistance === POLAR_ZOOM_LEVELS[0]}
-                                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-lg text-white/75 transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-30"
+                                    className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-lg text-white/75 transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-30"
                                     aria-label="表示距離を縮める"
                                 >
                                     −
@@ -334,7 +333,7 @@ export function PotentialMapView() {
                                     type="button"
                                     onClick={() => setMaxDistance((current) => POLAR_ZOOM_LEVELS[Math.min(POLAR_ZOOM_LEVELS.length - 1, POLAR_ZOOM_LEVELS.indexOf(current) + 1)])}
                                     disabled={maxDistance === POLAR_ZOOM_LEVELS[POLAR_ZOOM_LEVELS.length - 1]}
-                                    className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-lg text-white/75 transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-30"
+                                    className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-lg text-white/75 transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-30"
                                     aria-label="表示距離を広げる"
                                 >
                                     ＋
@@ -359,11 +358,17 @@ export function PotentialMapView() {
                 </div>
             </LayerMenu>
 
-            <CurrentLocationButton
-                onClick={handleLocate}
-                isNorthUp
-                className="absolute bottom-[calc(24px+env(safe-area-inset-bottom))] right-6 md:bottom-8 md:right-8"
-            />
+            {!(isMobileViewport && isLayerMenuOpen) && (
+                <CurrentLocationButton
+                    onClick={handleLocate}
+                    isNorthUp
+                    className={`absolute z-[4500] right-6 ${
+                        isMobileViewport
+                            ? 'bottom-[calc(55px+24px+env(safe-area-inset-bottom))]'
+                            : 'bottom-[calc(24px+env(safe-area-inset-bottom))]'
+                    } md:bottom-8 md:right-8`}
+                />
+            )}
 
             {!isLoaded && (
                 <div className="absolute inset-0 z-[7000] grid place-items-center bg-black text-sm text-white/60">

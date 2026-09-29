@@ -16,7 +16,7 @@ type PrototypePanelProps = {
 };
 
 const segmentClass = (selected: boolean) =>
-    `flex-1 whitespace-nowrap rounded-lg px-1.5 py-1.5 text-xs font-medium transition-colors ${selected ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80'}`;
+    `inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-lg px-1.5 py-1.5 text-xs font-medium transition-colors ${selected ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white/80'}`;
 
 export function PrototypeControls({
     range,

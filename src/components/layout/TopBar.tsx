@@ -1,6 +1,7 @@
 import { Search, Sparkles, User } from 'lucide-react';
 import { useState } from 'react';
 import type { GeocodingResult } from '../../lib/api/geocodingApi';
+import type { PanelView } from '../potential/PanelViewSelector';
 import { AppMenu } from '../menu/AppMenu';
 import type { FanConfig } from '../map/types';
 
@@ -31,6 +32,8 @@ type TopBarProps = {
     onFanConfigChange?: (config: FanConfig) => void;
     onViewPosts?: () => void;
     postCount?: number;
+    panelView?: PanelView;
+    onPanelViewChange?: (panelView: PanelView) => void;
 };
 
 export function TopBar({
@@ -50,6 +53,8 @@ export function TopBar({
     onFanConfigChange,
     onViewPosts,
     postCount = 0,
+    panelView,
+    onPanelViewChange,
 }: TopBarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -174,6 +179,8 @@ export function TopBar({
                 onViewPosts={onViewPosts}
                 fanConfig={fanConfig}
                 onFanConfigChange={onFanConfigChange}
+                panelView={panelView}
+                onPanelViewChange={onPanelViewChange}
             />
         </div>
     );

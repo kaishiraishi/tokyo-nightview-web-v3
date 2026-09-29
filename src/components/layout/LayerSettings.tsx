@@ -26,57 +26,67 @@ export function LayerSettings({
 
             <div className="grid grid-cols-1 gap-4">
                 {/* VIIRS Layer */}
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${viirsEnabled ? 'bg-violet-300' : 'bg-white/20'}`} />
-                            <span className="text-sm text-white/90">夜間光 (VIIRS)</span>
-                        </div>
-                        <button
-                            onClick={() => setViirsEnabled(!viirsEnabled)}
-                            className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${viirsEnabled
-                                    ? 'bg-violet-700 text-white'
-                                    : 'bg-white/10 text-white/50 hover:bg-white/20'
-                                }`}
-                        >
-                            {viirsEnabled ? 'ON' : 'OFF'}
-                        </button>
-                    </div>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => setViirsEnabled(!viirsEnabled)}
+                    aria-pressed={viirsEnabled}
+                    className="group flex min-h-11 w-full items-center justify-between text-left"
+                >
+                    <span className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${viirsEnabled ? 'bg-violet-300' : 'bg-white/20'}`} />
+                        <span className="text-sm text-white/90">夜間光 (VIIRS)</span>
+                    </span>
+                    <span
+                        className={`rounded-full px-3 py-1 text-[10px] font-bold transition-all ${viirsEnabled
+                                ? 'bg-violet-700 text-white'
+                                : 'bg-white/10 text-white/50 group-hover:bg-white/20'
+                            }`}
+                    >
+                        {viirsEnabled ? 'ON' : 'OFF'}
+                    </span>
+                </button>
 
                 {/* Night View Potential Layer */}
-                <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${potentialEnabled ? 'bg-emerald-400' : 'bg-white/20'}`} />
+                <button
+                    type="button"
+                    onClick={() => setPotentialEnabled(!potentialEnabled)}
+                    aria-pressed={potentialEnabled}
+                    className="group flex min-h-11 w-full items-center justify-between border-t border-white/5 pt-3 text-left"
+                >
+                    <span className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${potentialEnabled ? 'bg-emerald-400' : 'bg-white/20'}`} />
                         <span className="text-sm text-white/90">夜景ポテンシャル</span>
-                    </div>
-                    <button
-                        onClick={() => setPotentialEnabled(!potentialEnabled)}
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${potentialEnabled
+                    </span>
+                    <span
+                        className={`rounded-full px-3 py-1 text-[10px] font-bold transition-all ${potentialEnabled
                                 ? 'bg-emerald-600 text-white'
-                                : 'bg-white/10 text-white/50 hover:bg-white/20'
+                                : 'bg-white/10 text-white/50 group-hover:bg-white/20'
                             }`}
                     >
                         {potentialEnabled ? 'ON' : 'OFF'}
-                    </button>
-                </div>
+                    </span>
+                </button>
 
                 {/* Aerial Photo Layer */}
-                <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${aerialEnabled ? 'bg-blue-500' : 'bg-white/20'}`} />
+                <button
+                    type="button"
+                    onClick={() => setAerialEnabled(!aerialEnabled)}
+                    aria-pressed={aerialEnabled}
+                    className="group flex min-h-11 w-full items-center justify-between border-t border-white/5 pt-3 text-left"
+                >
+                    <span className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${aerialEnabled ? 'bg-blue-500' : 'bg-white/20'}`} />
                         <span className="text-sm text-white/90">航空写真 (国土地理院)</span>
-                    </div>
-                    <button
-                        onClick={() => setAerialEnabled(!aerialEnabled)}
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${aerialEnabled
+                    </span>
+                    <span
+                        className={`rounded-full px-3 py-1 text-[10px] font-bold transition-all ${aerialEnabled
                                 ? 'bg-blue-500 text-white'
-                                : 'bg-white/10 text-white/50 hover:bg-white/20'
+                                : 'bg-white/10 text-white/50 group-hover:bg-white/20'
                             }`}
                     >
                         {aerialEnabled ? 'ON' : 'OFF'}
-                    </button>
-                </div>
+                    </span>
+                </button>
             </div>
         </div>
     );

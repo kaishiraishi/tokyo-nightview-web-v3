@@ -59,5 +59,5 @@ export function DirectionalFieldView({ data }: { data: PotentialViewModel }) {
         drawCompassLabels(context, CANVAS_SIZE / 2 - 10);
     }, [smoothed]);
 
-    return <canvas ref={ref} className="block h-auto w-full" style={{ aspectRatio: '1 / 1' }} aria-label="Directional Field: 方向ごとの強さ" />;
+    return <canvas ref={ref} className="block h-auto w-full touch-pan-y" style={{ aspectRatio: '1 / 1' }} aria-label="Directional Field: 方向ごとの強さ" />;
 }

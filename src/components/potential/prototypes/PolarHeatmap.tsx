@@ -76,7 +76,7 @@ export function PolarHeatmapView({ data }: { data: PotentialViewModel }) {
         <div className="relative">
             <canvas
                 ref={ref}
-                className="block h-auto w-full touch-none"
+                className="block h-auto w-full touch-pan-y"
                 style={{ aspectRatio: '1 / 1' }}
                 onPointerMove={handlePointerMove}
                 onPointerLeave={() => setHovered(null)}

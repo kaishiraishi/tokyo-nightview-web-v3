@@ -75,16 +75,22 @@ export function LayerMenu({ isOpen, onToggle, children }: LayerMenuProps) {
             {/* Handle / Toggle Button */}
             {isMobile ? (
                 // Mobile Handle
-                <div 
+                <button
+                    type="button"
                     onClick={onToggle}
-                    className="h-[55px] w-full flex items-center justify-center cursor-pointer active:bg-white/5 rounded-t-2xl"
+                    aria-expanded={isOpen}
+                    aria-label={isOpen ? 'レイヤーメニューを閉じる' : 'レイヤーメニューを開く'}
+                    className="flex h-[55px] w-full cursor-pointer items-center justify-center rounded-t-2xl active:bg-white/5"
                 >
                     <div className="w-12 h-1.5 bg-white/20 rounded-full" />
-                </div>
+                </button>
             ) : (
                 // Desktop Toggle Button (Vertically Centered Tab - Larger & More Visible)
                 <button
+                    type="button"
                     onClick={onToggle}
+                    aria-expanded={isOpen}
+                    aria-label={isOpen ? 'レイヤーメニューを閉じる' : 'レイヤーメニューを開く'}
                     className="absolute -right-10 top-1/2 -translate-y-1/2 w-10 h-24 bg-black/80 backdrop-blur-xl border border-l-0 border-white/20 rounded-r-2xl flex items-center justify-center text-white/50 hover:text-white hover:bg-black/90 transition-all duration-300 group shadow-[10px_0_30px_rgba(0,0,0,0.5)]"
                 >
                     <div className="flex flex-col items-center gap-2 group-hover:scale-110 transition-transform">
@@ -96,7 +102,7 @@ export function LayerMenu({ isOpen, onToggle, children }: LayerMenuProps) {
 
             {/* Content Container */}
             <div className={`
-                ${isMobile ? 'h-[60vh]' : 'h-full'} 
+                ${isMobile ? 'h-[60vh] supports-[height:100dvh]:h-[60dvh]' : 'h-full'}
                 overflow-hidden flex flex-col
             `}>
                 {children}

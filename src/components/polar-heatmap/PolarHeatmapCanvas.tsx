@@ -33,7 +33,7 @@ export function PolarHeatmapCanvas({
         const context = canvas.getContext('2d');
         if (!context) return;
 
-        const dpr = window.devicePixelRatio || 1;
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
         canvas.width = size * dpr;
         canvas.height = size * dpr;
         canvas.style.width = `${size}px`;
@@ -153,7 +153,7 @@ export function PolarHeatmapCanvas({
             ref={canvasRef}
             width={size}
             height={size}
-            className="block touch-none rounded-full"
+            className="block touch-pan-y rounded-full"
             onPointerMove={interactive ? (event) => onHover(valueFromPointer(event)) : undefined}
             onPointerLeave={interactive ? () => onHover(null) : undefined}
             aria-label="方向と距離ごとの夜景ポテンシャル"

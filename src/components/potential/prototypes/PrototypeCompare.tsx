@@ -6,7 +6,7 @@ const ORDER: PrototypeType[] = ['field', 'polar'];
 
 export function PrototypeCompare({ data, isUpdating }: { data: PotentialViewModel; isUpdating: boolean }) {
     return (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {ORDER.map((type) => (
                 <PrototypeCard key={type} title={PROTOTYPE_META[type].title} subtitle={prototypeSubtitle(type, data)} isUpdating={isUpdating}>
                     <PrototypeView type={type} data={data} />
