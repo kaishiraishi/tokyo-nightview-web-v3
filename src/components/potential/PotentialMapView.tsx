@@ -27,8 +27,6 @@ const PANEL_VIEWS: { id: PanelView; label: string }[] = [
     { id: 'current', label: '現状' },
     { id: 'field', label: 'Field' },
     { id: 'polar', label: 'Polar' },
-    { id: 'bands', label: 'Bands' },
-    { id: 'peaks', label: 'Peaks' },
     { id: 'compare', label: '比較' },
 ];
 

@@ -45,24 +45,6 @@ export type PolarField = {
     cells: PolarCell[];
 };
 
-export type PotentialPeak = {
-    bearing: number;
-    strength: number;
-    visualStrength: number;
-    distance: number;
-    // 半値幅から推定した角度幅 (度)
-    spread: number;
-};
-
-export type PotentialBand = {
-    bearing: number;
-    from: number;
-    to: number;
-    rawValue: number;
-    strength: number;
-    visualStrength: number;
-};
-
 export type PotentialViewModel = {
     center: { lng: number; lat: number };
     range: PotentialRange;
@@ -70,9 +52,6 @@ export type PotentialViewModel = {
     samples: PotentialSample[];
     directionProfile: DirectionValue[];
     polarField: PolarField;
-    peaks: PotentialPeak[];
-    bandEdges: number[];
-    bands: PotentialBand[];
 };
 
-export type PrototypeType = 'field' | 'polar' | 'bands' | 'peaks';
+export type PrototypeType = 'field' | 'polar';

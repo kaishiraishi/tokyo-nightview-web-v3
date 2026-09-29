@@ -19,3 +19,6 @@ __pycache__/
 # Local Config/Docs
 SERVER_RESTART.md
 directory_report.md
+
+# Potential tile generation intermediates
+public/NightViewPotential_tiles/work/

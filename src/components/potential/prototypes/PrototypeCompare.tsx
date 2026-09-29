@@ -2,7 +2,7 @@ import { PrototypeCard } from './PrototypeCard';
 import { PROTOTYPE_META, PrototypeView, prototypeSubtitle } from './PrototypeViews';
 import type { PotentialViewModel, PrototypeType } from './types';
 
-const ORDER: PrototypeType[] = ['field', 'polar', 'bands', 'peaks'];
+const ORDER: PrototypeType[] = ['field', 'polar'];
 
 export function PrototypeCompare({ data, isUpdating }: { data: PotentialViewModel; isUpdating: boolean }) {
     return (

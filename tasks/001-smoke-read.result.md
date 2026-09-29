@@ -1,0 +1,2 @@
+- `potentialSampler.ts` の export 関数: `potentialValueFromPixel`, `applyPotentialThreshold`, `samplePotentialGrid`, `polarPointsFromGrid`, `deriveDirectionPeaks`
+- `PotentialMapView.tsx` が使用: `polarPointsFromGrid`, `deriveDirectionPeaks`
