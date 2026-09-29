@@ -22,3 +22,6 @@ directory_report.md
 
 # Potential tile generation intermediates
 public/NightViewPotential_tiles/work/
+
+# Potential tiles (regenerate via scripts/make-potential-tiles.sh)
+public/NightViewPotential_tiles/
