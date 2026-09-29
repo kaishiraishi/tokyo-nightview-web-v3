@@ -1,15 +1,16 @@
 import type { PrototypeType } from './prototypes/types';
 
-export type PanelView = 'current' | PrototypeType | 'compare';
+// 従来版 (directional-field / polar-heatmap) と試作版 (prototypes/) を 1 枚ずつ表示する。
+export type PanelView = 'classicField' | 'classicPolar' | PrototypeType;
 
 export const PANEL_VIEWS: ReadonlyArray<{ id: PanelView; label: string }> = [
-    { id: 'current', label: '現状' },
-    { id: 'field', label: 'Field' },
-    { id: 'polar', label: 'Polar' },
-    { id: 'compare', label: '比較' },
+    { id: 'classicField', label: 'Field（従来）' },
+    { id: 'classicPolar', label: 'Polar（従来）' },
+    { id: 'field', label: 'Field（試作）' },
+    { id: 'polar', label: 'Polar（試作）' },
 ];
 
-const DEFAULT_PANEL_VIEW: PanelView = 'current';
+const DEFAULT_PANEL_VIEW: PanelView = 'classicField';
 const PANEL_VIEW_STORAGE_KEY = 'nightview.panelView';
 
 export function isPanelView(value: unknown): value is PanelView {
@@ -43,7 +44,7 @@ type PanelViewSelectorProps = {
 
 export function PanelViewSelector({ value, onChange }: PanelViewSelectorProps) {
     return (
-        <div className="grid grid-cols-4 gap-1 rounded-2xl bg-white/[0.04] p-1" role="group" aria-label="方向・距離表示の切り替え">
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-white/[0.04] p-1" role="group" aria-label="方向・距離表示の切り替え">
             {PANEL_VIEWS.map((view) => {
                 const isSelected = value === view.id;
 

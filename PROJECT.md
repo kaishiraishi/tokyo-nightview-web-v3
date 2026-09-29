@@ -67,7 +67,7 @@
 - 配色: 紫はネオンにせず落ち着いた灯りとして扱う。塗りは選択中・主ボタンに限り、淡い紫は枠・フォーカスに使う。青は航空写真などレイヤー状態だけ、赤はエラーと北方向だけ。
 - `LayerMenu` の内容: レイヤー ON/OFF（VIIRS / ポテンシャル / 航空写真）、不透明度、凡例、方向・距離パネル。
 - 地図のポテンシャル表示は「絞って探す」（閾値 0.006）に固定。
-- 方向・距離パネルの表示「現状 / Field / Polar / 比較」は メニュー → 設定 の `PanelViewSelector` で選ぶ（`localStorage` の `nightview.panelView` に保存）。メニュー・設定画面もトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）。現状 = 従来の `DirectionalField` + `PolarHeatmap`、Field / Polar / 比較 = `src/components/potential/prototypes/`（共通 ViewModel から描画、Range ボタンで全 View 同時更新）。
+- 方向・距離パネルの表示は 4 種類「Field（従来）/ Polar（従来）/ Field（試作）/ Polar（試作）」で、カードには 1 つだけ出す。選択は メニュー → 設定 の `PanelViewSelector` で選ぶ（`localStorage` の `nightview.panelView` に保存）。メニュー・設定画面もトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）。現状 = 従来の `DirectionalField` + `PolarHeatmap`、Field / Polar / 比較 = `src/components/potential/prototypes/`（共通 ViewModel から描画、Range ボタンで全 View 同時更新）。
 - 選択地点からは Google Maps Street View を別タブで開くリンクだけを出す（規約上、Google 画像・API を MapLibre 画面に埋め込まない。Maps Platform ToS §3.2.3(e)）。
 - 旧 V2 の TopBar モード切替 / ScanControlPanel / deck.gl 系 UI は現行の主画面では使わない。
 

@@ -242,7 +242,7 @@ export function PotentialMapView() {
                             表示は メニュー → 設定 で切替（現在: {currentPanelViewLabel}）
                         </div>
 
-                        {panelView !== 'current' && (
+                        {(panelView === 'field' || panelView === 'polar') && (
                             <div className="mt-4">
                                 <PrototypePanel
                                     data={viewModel}
@@ -264,8 +264,7 @@ export function PotentialMapView() {
                             </div>
                         )}
 
-                        {panelView === 'current' && (
-                            <>
+                        {panelView === 'classicField' && (
                         <div className="mt-4 rounded-2xl border border-white/10 bg-[#080c10] p-3">
                             <div className="flex items-center justify-between gap-3 px-1">
                                 <div>
@@ -295,7 +294,9 @@ export function PotentialMapView() {
                             {samplingError && <p className="mt-2 text-center text-[11px] text-amber-200/80">{samplingError}</p>}
                             {streetViewBlock}
                         </div>
+                        )}
 
+                        {panelView === 'classicPolar' && (
                         <div className="mt-4 rounded-2xl border border-white/10 bg-[#081019] p-3">
                             <div className="px-1">
                                 <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-white/75">
@@ -351,8 +352,8 @@ export function PotentialMapView() {
                                 <span>LOW</span>
                                 <span>HIGH</span>
                             </div>
+                            {streetViewBlock}
                         </div>
-                            </>
                         )}
                     </div>
                 </div>

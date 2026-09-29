@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react';
 import { PrototypeCard } from './PrototypeCard';
-import { PrototypeCompare } from './PrototypeCompare';
 import { PROTOTYPE_META, PrototypeView, prototypeSubtitle } from './PrototypeViews';
 import { POTENTIAL_RANGES, type PotentialRange, type PotentialViewModel, type PrototypeType } from './types';
 
 type PrototypePanelProps = {
     data: PotentialViewModel | null;
-    type: PrototypeType | 'compare';
+    type: PrototypeType;
     isUpdating: boolean;
     range: PotentialRange;
     onRangeChange: (range: PotentialRange) => void;
@@ -44,9 +43,7 @@ export function PrototypePanel({ data, type, isUpdating, status, error, children
             <PrototypeControls {...controls} />
             <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-center text-[11px] text-white/45">{status}</div>
             {error && <p className="text-center text-[11px] text-amber-200/80">{error}</p>}
-            {data && type === 'compare' ? (
-                <PrototypeCompare data={data} isUpdating={isUpdating} />
-            ) : data && type !== 'compare' ? (
+            {data ? (
                 <PrototypeCard title={PROTOTYPE_META[type].title} subtitle={prototypeSubtitle(type, data)} isUpdating={isUpdating}>
                     <PrototypeView type={type} data={data} />
                 </PrototypeCard>
