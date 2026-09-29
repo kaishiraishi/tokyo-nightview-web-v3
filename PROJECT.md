@@ -53,7 +53,7 @@
 - Active view: `src/components/potential/PotentialMapView.tsx`
 - Map and layer registration: `src/hooks/useMapLibre.ts`
 - Pixel sampling and polar data: `src/lib/potentialSampler.ts`
-- Potential tiles: `public/NightViewPotential_tiles/`
+- Potential tiles: `public/NightViewPotential_tiles/`（`.gitignore` 済み。Git には含めず `scripts/make-potential-tiles.sh` で再生成する）
 - Tile generation: `scripts/make-potential-tiles.sh`
 - Deployment base path: `vite.config.ts` の `/tokyo-nightview-web-v3/`
 
