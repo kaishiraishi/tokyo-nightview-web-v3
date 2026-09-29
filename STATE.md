@@ -14,6 +14,7 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 - 方向・距離パネルの切替「現状 / Field / Polar / 比較」。現状は従来 UI を維持。Field / Polar / 比較は `prototypes/` の共通 ViewModel から描画、Range ボタンで同時更新
 - 005 モバイル対応: 下部シートのアクセシブルなハンドル、dvh フォールバック、レイヤー行・Range の操作領域拡大、比較カードの縦積み、canvas の縦スクロール許可、Polar の DPR 上限を反映
 - 004 設定対応: `PanelViewSelector` で方向・距離表示をメニュー → 設定から変更し、`nightview.panelView` に安全に永続化。AppMenu をガラス調へ統一し、PotentialMapView のモバイル初期状態・操作領域・現在地ボタンを修正
+- 006 ESLint 9 対応: `eslint.config.js` の flat config を追加し、現行主画面の lint を通過。`useMapLibre` の地形ソースを既存型に合わせ、既存の `any` を追加せず lint 対応
 - Radial Bands / Peak Wedges は試作後に削除（4 View 版は commit `1c8b1019` に残る）
 - ドキュメント運用の統合: `PROJECT.md` / `STATE.md` / `AGENTS.md` / `CLAUDE.md` / `PLAN.md`。`UI.md`・`POTENTIAL_LAYER_SETUP.md`・`.github/copilot-instructions.md` は内容を `PROJECT.md`（Current UI / Data pipeline）と `AGENTS.md` に統合して削除
 
@@ -25,14 +26,12 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 
 1. 375×667 / 390×844 のブラウザで下部シート、切替パネル、比較カードの見やすさを確認する
 2. 現状 UI と Field / Polar を比べ、採用する表示を決めて不要な方を整理する
-3. ESLint 9 用の設定（`eslint.config.js`）を追加し、`npm run lint` を通す
-4. 大きな機能追加の前に `PLAN.md` を書く
+3. 大きな機能追加の前に `PLAN.md` を書く
 
 （旧 Explore/Analyze 系コードと `tools/dsm-api` の扱いは PROJECT.md の Non-goals により判断しない）
 
 ## Blockers
 
-- `npm run lint`: `eslint.config.(js|mjs|cjs)` がなく失敗（ESLint 9.39.2）
 - `npm run build` は成功するが、JS が 1.2 MB 超の chunk 警告
 - 未コミット: Polar/Field 絞り込みと本ドキュメント統合、`public/NightViewPotential_tiles` の再生成差分（タイルは意図的に別扱い）
 
@@ -50,8 +49,8 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 ## Verification
 
 - `npm run build`: passing（chunk / Browserslist 警告あり）
-- `npm run lint`: failing（上記 ESLint 設定不足）
-- `./scripts/verify.sh`: lint FAIL（既知の ESLint 設定不足）、typecheck PASS、build PASS（chunk / Browserslist 警告あり）
+- `npm run lint`: passing（現行対象。旧 `src/components/map/**` は旧 Explore/Analyze 系として設定で ignore）
+- `./scripts/verify.sh`: lint PASS、typecheck PASS、build PASS（chunk / Browserslist 警告あり）
 - `npm test`: script なし（現段階では対象外）
 - ブラウザ: データのある地点（秦野西方）で Field / Polar / 比較の描画と Range 切替を確認。モバイルは未確認
 
@@ -60,6 +59,7 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 - 閾値・正規化は PNG の RGBA から色ランプを逆引きした近似値。0.1635 以上は飽和する。
 - Street View: Maps URLs（キー不要）を別タブで開くのみ。規約根拠は Maps Platform ToS §3.2.3(e)。変更時に現行規約を再確認する。
 - `PolarHeatmap` の描画は、セルごとに blur を掛けるとページが固まるため、オフスクリーン描画 + 1 回の blur にしている。
+- ESLint の `react-refresh/only-export-components` は、共有定数・型ガード・表示用関数を公開する `PanelViewSelector.tsx` と `prototypes/PrototypeViews.tsx` だけ無効化。旧 `src/components/map/**` は既存の Hook 依存関係・`any` が多数あるため変更せず ignore。
 
 ## Last updated
 

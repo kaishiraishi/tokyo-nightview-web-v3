@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo, type RefObject } from 'react';
 import maplibregl from 'maplibre-gl';
-import { useGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
+import { useGsiTerrainSource as createGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
 import { DEFAULT_STYLE } from '../config/mapStyles';
 import { applyPotentialThreshold } from '../lib/potentialSampler';
 
@@ -366,13 +366,12 @@ function addTokyoMask(map: maplibregl.Map) {
 
 function addTerrain(
     map: maplibregl.Map,
-    gsiTerrainSource: maplibregl.SourceSpecification,
+    gsiTerrainSource: maplibregl.RasterDEMSourceSpecification,
     exaggeration: number
 ) {
-    const terrainSource = { ...(gsiTerrainSource as any) } as any;
-    if ('scheme' in terrainSource) {
-        delete terrainSource.scheme;
-    }
+    // gsi-terrain は型にない scheme を付けることがあるため、元実装どおり除く。
+    const terrainSource: maplibregl.RasterDEMSourceSpecification & { scheme?: string } = { ...gsiTerrainSource };
+    delete terrainSource.scheme;
 
     if (!map.getSource(TERRAIN_SOURCE_ID)) {
         map.addSource(TERRAIN_SOURCE_ID, terrainSource);
@@ -387,7 +386,7 @@ function addTerrain(
     }
 
     if (!map.getSource(HILLSHADE_SOURCE_ID)) {
-        map.addSource(HILLSHADE_SOURCE_ID, { ...terrainSource } as any);
+        map.addSource(HILLSHADE_SOURCE_ID, { ...terrainSource });
     }
 
     if (!map.getLayer(HILLSHADE_LAYER_ID)) {
@@ -415,7 +414,7 @@ export function useMapLibre(containerRef: RefObject<HTMLDivElement>) {
     const [isLoaded, setIsLoaded] = useState(false);
 
     const gsiTerrainSource = useMemo(
-        () => useGsiTerrainSource(maplibregl.addProtocol, { maxzoom: 9 }),
+        () => createGsiTerrainSource(maplibregl.addProtocol, { maxzoom: 9 }),
         []
     );
 
