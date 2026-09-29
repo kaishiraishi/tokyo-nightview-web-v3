@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
-import { ExternalLink, Layers, Sparkles } from 'lucide-react';
+import { ExternalLink, Sparkles } from 'lucide-react';
 import { LayerMenu } from '../layout/LayerMenu';
 import { LayerSettings } from '../layout/LayerSettings';
 import { TopBar } from '../layout/TopBar';
 import { CurrentLocationButton } from '../ui/CurrentLocationButton';
-import { DirectionalField } from '../directional-field/DirectionalField';
-import { PolarHeatmap } from '../polar-heatmap/PolarHeatmap';
+import { ClassicPanels } from './ClassicPanels';
 import { PrototypePanel } from './prototypes/PrototypePanel';
 import { PANEL_VIEWS, readStoredPanelView, type PanelView, writeStoredPanelView } from './PanelViewSelector';
-import { POTENTIAL_RANGES, type PotentialRange } from './prototypes/types';
+import { type PotentialRange } from './prototypes/types';
 import { deriveDirectionPeaks, polarPointsFromGrid, type MapLocation } from '../../lib/potentialSampler';
 import { usePotentialAnalysis } from '../../hooks/usePotentialAnalysis';
 import { useMapLibre, POTENTIAL_MODES, POTENTIAL_FILTERED_LAYER_PREFIX } from '../../hooks/useMapLibre';
@@ -20,14 +19,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // 地図の手がかり量は「絞って探す」に固定
 const POTENTIAL_MODE_ID = 'focused';
 
-const POLAR_ZOOM_LEVELS = POTENTIAL_RANGES;
-
 function getIsMobileViewport() {
     return typeof window !== 'undefined' && window.innerWidth < 768;
-}
-
-function formatDistance(distance: number) {
-    return distance >= 1000 ? `${distance / 1000} km` : `${distance} m`;
 }
 
 export function PotentialMapView() {
@@ -54,8 +47,16 @@ export function PotentialMapView() {
         threshold: POTENTIAL_MODES.find((mode) => mode.id === POTENTIAL_MODE_ID)!.threshold,
     });
     const potentialPoints = useMemo(() => (rawSamples ? polarPointsFromGrid(rawSamples) : []), [rawSamples]);
-    const directionPeaks = useMemo(() => deriveDirectionPeaks(potentialPoints), [potentialPoints]);
-    const currentPanelViewLabel = PANEL_VIEWS.find((view) => view.id === panelView)?.label ?? '現状';
+    const directionPeaks = useMemo(
+        () => deriveDirectionPeaks(potentialPoints.filter((point) => point.distance <= maxDistance)),
+        [maxDistance, potentialPoints],
+    );
+    const currentPanelViewLabel = PANEL_VIEWS.find((view) => view.id === panelView)?.label ?? PANEL_VIEWS[0].label;
+    const panelStatus = isSampling
+        ? 'クリック地点の周囲をサンプリング中…'
+        : selectedLocation
+            ? `選択地点 ${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
+            : '地図上をクリックして地点を選択';
 
     useEffect(() => {
         const handleViewportResize = () => setIsMobileViewport(getIsMobileViewport());
@@ -139,20 +140,20 @@ export function PotentialMapView() {
     }, []);
 
     const streetViewBlock = selectedLocation ? (
-            <div className="mt-3 border-t border-white/10 pt-3">
-                <a
-                    href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedLocation.lat},${selectedLocation.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-300/[0.08] px-3 py-2 text-center text-xs font-semibold text-sky-100 transition-colors hover:border-sky-200/50 hover:bg-sky-300/[0.14]"
-                >
-                    <span>Google マップで周辺のストリートビューを探す</span>
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                </a>
-                <p className="mt-2 text-center text-[10px] leading-relaxed text-white/40">
-                    選択地点に画像がない場合は、近くの場所が表示されることがあります。Google マップが別タブで開きます。
-                </p>
-            </div>
+        <div className="mt-3 border-t border-white/10 pt-3">
+            <a
+                href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedLocation.lat},${selectedLocation.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-300/[0.08] px-3 py-2 text-center text-xs font-semibold text-sky-100 transition-colors hover:border-sky-200/50 hover:bg-sky-300/[0.14]"
+            >
+                <span>Google マップで周辺のストリートビューを探す</span>
+                <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            </a>
+            <p className="mt-2 text-center text-[10px] leading-relaxed text-white/40">
+                選択地点に画像がない場合は、近くの場所が表示されることがあります。Google マップが別タブで開きます。
+            </p>
+        </div>
     ) : null;
 
     return (
@@ -250,110 +251,27 @@ export function PotentialMapView() {
                                     isUpdating={isSampling}
                                     range={maxDistance}
                                     onRangeChange={setMaxDistance}
+                                    hasSelection={selectedLocation !== null}
                                     error={samplingError}
-                                    status={
-                                        isSampling
-                                            ? 'クリック地点の周囲をサンプリング中…'
-                                            : selectedLocation
-                                                ? `選択地点 ${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
-                                                : '地図上をクリックして地点を選択'
-                                    }
+                                    status={panelStatus}
                                 >
                                     {streetViewBlock && <div className="rounded-2xl border border-white/10 bg-zinc-950/90 px-3 pb-3">{streetViewBlock}</div>}
                                 </PrototypePanel>
                             </div>
                         )}
 
-                        {panelView === 'classicField' && (
-                        <div className="mt-4 rounded-2xl border border-white/10 bg-[#080c10] p-3">
-                            <div className="flex items-center justify-between gap-3 px-1">
-                                <div>
-                                    <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-white/75">
-                                        <Sparkles className="h-4 w-4 text-violet-300" />
-                                        Directional Field
-                                    </div>
-                                    <p className="mt-1 text-[11px] text-white/40">周囲の強い方向を気配で表示</p>
-                                </div>
-                            </div>
-
-                            <DirectionalField
-                                peaks={directionPeaks}
-                                size={246}
-                                palette="opportunity"
-                                showForward
-                                interactive
-                                className="mx-auto mt-2"
-                            />
-                            <div className="mt-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-center text-[11px] text-white/45">
-                                {isSampling
-                                    ? 'クリック地点の周囲をサンプリング中…'
-                                    : selectedLocation
-                                        ? `選択地点 ${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
-                                        : '地図上をクリックして地点を選択'}
-                            </div>
-                            {samplingError && <p className="mt-2 text-center text-[11px] text-amber-200/80">{samplingError}</p>}
-                            {streetViewBlock}
-                        </div>
-                        )}
-
-                        {panelView === 'classicPolar' && (
-                        <div className="mt-4 rounded-2xl border border-white/10 bg-[#081019] p-3">
-                            <div className="px-1">
-                                <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-white/75">
-                                    <Layers className="h-4 w-4 text-cyan-300" />
-                                    Polar Heatmap
-                                </div>
-                                <p className="mt-1 text-[11px] text-white/40">方向 × 距離 × 強度</p>
-                            </div>
-
-                            <PolarHeatmap
-                                points={potentialPoints}
+                        {(panelView === 'classicField' || panelView === 'classicPolar') && (
+                            <ClassicPanels
+                                view={panelView}
+                                directionPeaks={directionPeaks}
+                                potentialPoints={potentialPoints}
                                 maxDistance={maxDistance}
-                                size={246}
-                                palette="potential"
-                                showGrid
-                                showCenter
-                                interactive
-                                className="mx-auto mt-2"
+                                onRangeChange={setMaxDistance}
+                                status={panelStatus}
+                                error={samplingError}
+                                hasSelection={selectedLocation !== null}
+                                streetViewBlock={streetViewBlock}
                             />
-
-                            <div className="mt-2 flex items-center justify-between gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setMaxDistance((current) => POLAR_ZOOM_LEVELS[Math.max(0, POLAR_ZOOM_LEVELS.indexOf(current) - 1)])}
-                                    disabled={maxDistance === POLAR_ZOOM_LEVELS[0]}
-                                    className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-lg text-white/75 transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-30"
-                                    aria-label="表示距離を縮める"
-                                >
-                                    −
-                                </button>
-                                <div className="min-w-24 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center text-sm font-semibold tabular-nums text-white/90">
-                                    {formatDistance(maxDistance)}
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setMaxDistance((current) => POLAR_ZOOM_LEVELS[Math.min(POLAR_ZOOM_LEVELS.length - 1, POLAR_ZOOM_LEVELS.indexOf(current) + 1)])}
-                                    disabled={maxDistance === POLAR_ZOOM_LEVELS[POLAR_ZOOM_LEVELS.length - 1]}
-                                    className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-lg text-white/75 transition hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-30"
-                                    aria-label="表示距離を広げる"
-                                >
-                                    ＋
-                                </button>
-                            </div>
-
-                            <div
-                                className="mt-3 h-2 rounded-full"
-                                style={{
-                                    background:
-                                        'linear-gradient(to right, rgba(20,18,30,0.16), rgba(38,25,74,0.35), rgba(190,75,70,0.78), rgba(255,166,0,0.92))',
-                                }}
-                            />
-                            <div className="mt-1 flex justify-between text-[10px] text-white/35">
-                                <span>LOW</span>
-                                <span>HIGH</span>
-                            </div>
-                            {streetViewBlock}
-                        </div>
                         )}
                     </div>
                 </div>

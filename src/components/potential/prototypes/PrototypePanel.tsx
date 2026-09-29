@@ -9,6 +9,7 @@ type PrototypePanelProps = {
     isUpdating: boolean;
     range: PotentialRange;
     onRangeChange: (range: PotentialRange) => void;
+    hasSelection: boolean;
     status: ReactNode;
     error: string | null;
     children?: ReactNode;
@@ -37,7 +38,7 @@ export function PrototypeControls({
     );
 }
 
-export function PrototypePanel({ data, type, isUpdating, status, error, children, ...controls }: PrototypePanelProps) {
+export function PrototypePanel({ data, type, isUpdating, hasSelection, status, error, children, ...controls }: PrototypePanelProps) {
     return (
         <div className="space-y-3">
             <PrototypeControls {...controls} />
@@ -49,7 +50,7 @@ export function PrototypePanel({ data, type, isUpdating, status, error, children
                 </PrototypeCard>
             ) : (
                 <div className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/10 text-xs text-white/40">
-                    地図上をクリックして地点を選択
+                    {hasSelection ? 'この地点のデータを表示できません' : '地図上をクリックして地点を選択'}
                 </div>
             )}
             {children}
