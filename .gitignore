@@ -23,3 +23,7 @@ directory_report.md
 # Potential tile generation intermediates (raw gdal2tiles PNG + rasters). Regenerate via scripts/make-potential-tiles.sh
 # The served WebP tiles in public/NightViewPotential_tiles/ ARE committed.
 tiles-work/
+
+# 外部のデザインスキル（npx impeccable install / npx skills add で再導入できる）
+.claude/
+skills-lock.json
