@@ -144,16 +144,16 @@ function NavScale({ range, onRangeChange }: { range: PotentialRange; onRangeChan
     const index = POTENTIAL_RANGES.indexOf(range);
     const narrower = index > 0 ? POTENTIAL_RANGES[index - 1] : null;
     const wider = index >= 0 && index < POTENTIAL_RANGES.length - 1 ? POTENTIAL_RANGES[index + 1] : null;
-    const buttonClass = 'grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/50 text-lg leading-none text-white/85 transition-colors hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-black/50';
+    const buttonClass = 'grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/50 text-lg leading-none text-white/85 transition-colors hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-black/50';
 
     return (
         <>
-            <div className="pointer-events-none absolute bottom-2 left-4 flex flex-col items-start gap-0.5" aria-live="polite">
+            <div className="pointer-events-none absolute bottom-4 left-4 flex flex-col items-start gap-0.5" aria-live="polite">
                 <span className="text-[11px] font-semibold tabular-nums text-white/85">{formatDistance(range)}</span>
                 <span className="block h-1.5 border-x-2 border-b-2 border-white/80" style={{ width: SCALE_BAR_WIDTH }} aria-hidden="true" />
                 <span className="sr-only">表示範囲 {formatDistance(range)}</span>
             </div>
-            <div className="absolute bottom-2 right-4 flex flex-col gap-1.5">
+            <div className="absolute bottom-4 right-4 flex flex-col gap-1.5">
                 <button type="button" className={buttonClass} disabled={narrower === null} onClick={() => narrower !== null && onRangeChange(narrower)} aria-label="範囲を狭める（詳細）">＋</button>
                 <button type="button" className={buttonClass} disabled={wider === null} onClick={() => wider !== null && onRangeChange(wider)} aria-label="範囲を広げる（広域）">−</button>
             </div>
