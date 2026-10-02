@@ -162,6 +162,49 @@ export type PotentialRawSample = {
     value: number | null;
 };
 
+// 遠方のセル（方位 15° × 距離の間隔）は 1km を超えるのに、1 点だけ読むと明るい場所が点の間に落ちて 0 になる。
+// このリング以降は、セルの範囲を複数点で読んで集約する。近距離（画素と同程度の間隔）は従来どおり 1 点
+const CELL_AGGREGATE_FROM = 500;
+const CELL_BEARING_STEPS = [-0.4, -0.2, 0, 0.2, 0.4];
+const CELL_RADIAL_STEPS = [-0.35, 0, 0.35];
+// 最大値だけだと 1 画素の孤立点で近隣より明るく出るので、平均を少し混ぜて自然な濃淡にする
+const CELL_MAX_WEIGHT = 0.7;
+
+// セルの距離方向の範囲: 前後のリングとの中点まで（最外リングは内側の間隔を外側へ折り返す）
+function ringExtent(distance: number): { inner: number; outer: number } {
+    const index = SAMPLE_DISTANCES.indexOf(distance);
+    const previous = SAMPLE_DISTANCES[index - 1] ?? distance;
+    const next = SAMPLE_DISTANCES[index + 1];
+    const inner = (previous + distance) / 2;
+    const outer = next === undefined ? distance + (distance - inner) : (distance + next) / 2;
+    return { inner, outer };
+}
+
+async function sampleCell(origin: MapLocation, bearing: number, distance: number): Promise<number | null> {
+    if (distance < CELL_AGGREGATE_FROM) {
+        return samplePotentialValue(destinationPoint(origin, bearing, distance), distance);
+    }
+
+    const bearingStep = 360 / SAMPLE_BEARINGS.length;
+    const { inner, outer } = ringExtent(distance);
+    const radialSpan = outer - inner;
+    const requests = CELL_BEARING_STEPS.flatMap((bearingOffset) =>
+        CELL_RADIAL_STEPS.map((radialOffset) =>
+            samplePotentialValue(
+                destinationPoint(origin, bearing + bearingOffset * bearingStep, distance + radialOffset * radialSpan),
+                distance,
+            ),
+        ),
+    );
+    // タイルが読めなかった点は無視し、全点が読めなければ null（データなし）にする
+    const values = (await Promise.all(requests)).filter((value): value is number => value !== null);
+    if (values.length === 0) return null;
+
+    const max = Math.max(...values);
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return max * CELL_MAX_WEIGHT + mean * (1 - CELL_MAX_WEIGHT);
+}
+
 // 中心 (distance = 0) は 1 回だけ取得し、全方位で共有する。
 // maxDistance 以内の距離だけ取得する（200m の範囲で遠くのタイルまで読まないため）。
 export async function samplePotentialGrid(origin: MapLocation, maxDistance: number): Promise<PotentialRawSample[]> {
@@ -176,7 +219,7 @@ export async function samplePotentialGrid(origin: MapLocation, maxDistance: numb
                 SAMPLE_BEARINGS.map(async (bearing) => ({
                     bearing,
                     distance,
-                    value: await samplePotentialValue(destinationPoint(origin, bearing, distance), distance),
+                    value: await sampleCell(origin, bearing, distance),
                 })),
             );
         }),
