@@ -33,6 +33,10 @@ type AppMenuProps = {
   onDebugModeChange?: (enabled: boolean) => void;
   buildingsEnabled?: boolean;
   onBuildingsEnabledChange?: (enabled: boolean) => void;
+  headingSensorOn?: boolean;
+  onHeadingSensorChange?: (enabled: boolean) => void;
+  // 許可が拒否された・センサーがない、などで開始できなかった理由
+  headingSensorNote?: string | null;
 };
 
 export function AppMenu({
@@ -52,6 +56,9 @@ export function AppMenu({
   onDebugModeChange,
   buildingsEnabled,
   onBuildingsEnabledChange,
+  headingSensorOn,
+  onHeadingSensorChange,
+  headingSensorNote,
 }: AppMenuProps) {
   const [activeView, setActiveView] = useState<'main' | 'settings'>('main');
 
@@ -61,6 +68,7 @@ export function AppMenu({
   const hasFanConfigSetting = fanConfig !== undefined && onFanConfigChange !== undefined;
   const hasDebugModeSetting = debugMode !== undefined && onDebugModeChange !== undefined;
   const hasBuildingsSetting = buildingsEnabled !== undefined && onBuildingsEnabledChange !== undefined;
+  const hasHeadingSensorSetting = headingSensorOn !== undefined && onHeadingSensorChange !== undefined;
 
   const handleClose = () => {
     setActiveView('main');
@@ -220,6 +228,16 @@ export function AppMenu({
                   </section>
                 )}
 
+                {hasHeadingSensorSetting && (
+                  <SettingSwitch
+                    title="向きセンサー"
+                    description="端末の向きに合わせて、左上のコンパスを回し、向いている方向を扇形で表示します。端末の向きは画面の表示にだけ使い、保存・送信しません。"
+                    note={headingSensorNote}
+                    checked={headingSensorOn}
+                    onChange={onHeadingSensorChange}
+                  />
+                )}
+
                 {hasBuildingsSetting && (
                   <SettingSwitch
                     title="3D 建物"
@@ -238,7 +256,7 @@ export function AppMenu({
                   />
                 )}
 
-                {!hasPanelViewSetting && !hasFanConfigSetting && !hasDebugModeSetting && !hasBuildingsSetting && (
+                {!hasPanelViewSetting && !hasFanConfigSetting && !hasDebugModeSetting && !hasBuildingsSetting && !hasHeadingSensorSetting && (
                   <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
                     <div className={`text-sm font-semibold ${textPrimary}`}>夜景ポテンシャルマップ</div>
                     <p className={`mt-2 text-xs leading-relaxed ${textMuted}`}>
@@ -262,11 +280,13 @@ export function AppMenu({
 function SettingSwitch({
   title,
   description,
+  note,
   checked,
   onChange,
 }: {
   title: string;
   description: string;
+  note?: string | null;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
@@ -292,6 +312,7 @@ function SettingSwitch({
             />
           </span>
         </button>
+        {note && <p role="status" className="mt-2 px-1 text-[11px] leading-relaxed text-red-300/90">{note}</p>}
       </div>
     </section>
   );

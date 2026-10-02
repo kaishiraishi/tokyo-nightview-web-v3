@@ -42,6 +42,8 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 - 027 方向・距離カードの中身を撤去: 探索モードのシートを検索欄だけにした（シート自体は維持）。`PotentialMapView` から ClassicPanels / PrototypePanel / CompassControl 呼び出しと、それ専用の `directionPeaks` などを削除。デバッグモード時の Street View リンクはシートに単独で残す。モバイルは検索結果を選ぶとシートを閉じる（広げたまま空で地図を隠すのを防ぐ）。未使用になったファイル（`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`、`directional-field/`、`polar-heatmap/`）は削除せず残した
 - 028 公開準備（モバイル対応・軽量化。`PLAN.md` 021 の P0）: 閾値焼き込み WebP タイル（`scripts/bake-potential-tiles.py`、4,969 枚 2.21MB、git 管理）に切り替え、`potential-filtered://` プロトコルを削除。`public/viirs_heat_tiles`（54,217 ファイル）をバックアップ後に削除（`~/Desktop/tokyo-nightview-backup/viirs_heat_tiles-2026-10-02.tar.gz`）。3D 建物は初回スマホ OFF、`pixelRatio` を 2 に制限、iOS の自動拡大対策（16px）、アイコン・manifest・meta、CI の検証更新、国土地理院・PLATEAU の出典表記
 - 029 GitHub Pages に初回デプロイ（2026-10-02）: Pages を GitHub Actions 配信で有効化（`gh api` で `build_type=workflow`）、commit `e3d8c033` を push して Actions が成功。公開 URL: https://kaishiraishi.github.io/tokyo-nightview-web-v3/ 。リポジトリは private だが、Pages のサイトは誰でも見られる（`public: true`）
+- 030 Range に 5km / 10km を追加: `PotentialRange` と `POTENTIAL_RANGES` を拡張（50 / 100 / 200 / 500 / 1km / 5km / 10km。コンパスモードの ＋/− で段階的に切替）。サンプリング距離を最大 10km まで追加し、距離ごとにタイルのズームを切替（〜1km: z14、〜3km: z13、それ以遠: z12）。`usePotentialAnalysis` は Range に必要な距離だけ取得し、狭めるときは再取得しない。ミニコンパスのラベルを `5km` / `10km` 表記に対応
+- 031 向きの表示と横画面: ミニコンパスに前方の扇形（`facing`）を追加。向きセンサーはコンパスモードを閉じても止めず、設定に「向きセンサー」スイッチ（理由の表示つき）を追加。横長の画面ではコンパスモードを左右分割（左コンパス 46%・右地図）にし、スマホ横向き（高さ 520px 以下）では自動で開く（`useMediaQuery`）。コンパス側に、センサー停止中の「向きセンサーを開始」ボタン。右下ボタンは横向きの安全領域に合わせる
 - 016 アイコン置換: lucide-react を Google Material Symbols（Outlined 400, Apache 2.0）に置換。path を `src/components/ui/icons.tsx` に埋め込み、lucide と同名・同 props（size / className）で import 先だけ変更。`lucide-react` は依存から削除
 
 ## In progress
@@ -104,6 +106,8 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 - 027 実装後（2026-10-02）: `./scripts/verify.sh` PASS。agent-browser で 390×844 と 1440×900 を確認（検索結果の表示と選択後のシート閉鎖、デバッグ ON/OFF での Street View リンク）
 - 028 実装後（2026-10-02）: `./scripts/verify.sh` PASS。焼き込み WebP は元 PNG + 閾値処理と 300 枚・約 59 万ピクセルで完全一致。Python の逆算と TS 関数は 45,000 ピクセルで差 0。スロットル下のパンは 18 → 46.7fps、最大の固まり 317 → 67ms。本番ビルドを iPhone 14 設定で確認（manifest・アイコン・タイルすべて 200、検索欄 16px、3D 建物は初期 OFF、見た目は変更前と同じ）。配信物 59,208 → 4,991 ファイル、約 5.8MB。**実機（iOS Safari / Android Chrome）は未確認。コンパス・現在地は HTTPS でないと動かないため公開後に確認する**
 - 029 公開後（2026-10-02）: Actions のビルドとデプロイが成功。公開 URL で `/`、manifest、アイコン、WebP タイルが 200、存在しないタイルは 404（想定どおり）。iPhone 14 設定のブラウザで地図とポテンシャルの表示を確認（HTTPS・secure context で DeviceOrientation / Geolocation API が使える状態）。コンソールの 404 は国土地理院の海上の標高タイルと範囲外のタイルで、動作に影響しない。実機は未確認
+- 030 実装後（2026-10-02）: `./scripts/verify.sh` PASS。agent-browser（390×844）で 200m → 10km まで ＋ を押して切替（最大で「広げる」ボタンが無効になる）、10km / 5km / 1km の表示を確認。200m → 10km の間に読み込んだポテンシャルタイルは 16 枚（z13: 6、z12: 10）。遠方（z12）のサンプルは広いタイル由来で粗い（約 31m/px）。10km では 24 方位の間隔が約 2.6km になる
+- 031 実装後（2026-10-02）: `./scripts/verify.sh` PASS。agent-browser で、センサー有効化（iOS 方式の `deviceorientation` + `webkitCompassHeading` を手で送って再現）時の扇形表示・文字盤の回転、コンパスモードを閉じても扇形が残ること、設定のスイッチで止めると扇形が消えること、横画面 844×390 での自動オープン・左右分割・地図タップでの地点選択、縦↔横の切替で自動で開閉することを確認。センサーなしの環境では設定に理由が出る。**実機のセンサー・ノッチの安全領域は未確認**
 - `npm test`: script なし（現段階では対象外）
 - ブラウザ: 旧 3 切替（現状 / Field / Polar）の描画は秦野西方で確認済み。4 種類化・012 のシート／Map Modes／全画面コンパス・014 の PC / モバイル切替は未確認。`npm run dev -- --host 127.0.0.1` は sandbox の `listen EPERM`、`agent-browser` は socket ディレクトリ書込不可で起動できなかった
 

@@ -23,6 +23,7 @@ import { usePostPopups } from '../../hooks/usePostPopups';
 import { usePosts } from '../../hooks/usePosts';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { useDeviceHeading } from '../../hooks/useDeviceHeading';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import { normalizeAngle } from '../../lib/heading';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -40,6 +41,11 @@ const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 24px)';
 
 // コンパス分割表示中はシートがないので、地図下端の出典表示（2 行になることがある）の上にボタン列を置く
 const SPLIT_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom))';
+
+// 横長の画面ではコンパスモードを左右に分割する（左: コンパス、右: 地図）。縦長は上下（上: コンパス、下: 地図）
+const LANDSCAPE_QUERY = '(orientation: landscape)';
+// スマホを横向きにしたとき（高さが小さい横長）は、コンパスモードを自動で開く。PC のウィンドウでは開かない
+const LANDSCAPE_PHONE_QUERY = '(orientation: landscape) and (max-height: 520px)';
 
 function getIsMobileViewport() {
     return typeof window !== 'undefined' && window.innerWidth < 768;
@@ -89,6 +95,10 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>(() => getIsMobileViewport() ? 'collapsed' : 'expanded');
     const [isMapModesOpen, setIsMapModesOpen] = useState(false);
     const [isCompassModeOpen, setIsCompassModeOpen] = useState(false);
+    const isLandscape = useMediaQuery(LANDSCAPE_QUERY);
+    const isLandscapePhone = useMediaQuery(LANDSCAPE_PHONE_QUERY);
+    const compassOpenRef = useRef(false);
+    const openedByLandscapeRef = useRef(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const isLayerMenuOpen = isMobileViewport ? mobileSheetLevel !== 'collapsed' : isDesktopLayerMenuOpen;
     const currentLocation = useMemo(
@@ -231,10 +241,32 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         setIsCompassModeOpen(true);
     }, [startDeviceHeading]);
 
+    // コンパスモードを閉じてもセンサーは止めない（左上のミニコンパスが向きを出し続ける）。止めるのは設定のスイッチ
     const handleCompassModeClose = useCallback(() => {
-        stopDeviceHeading();
         setIsCompassModeOpen(false);
-    }, [stopDeviceHeading]);
+    }, []);
+
+    useEffect(() => {
+        compassOpenRef.current = isCompassModeOpen;
+    }, [isCompassModeOpen]);
+
+    // スマホを横向きにしたらコンパスモードを開き、縦に戻したら（自動で開いた場合だけ）閉じる。
+    // 向きセンサーは自動では開始しない（iOS は許可にタップが要るため）。コンパス側のボタンか設定から開始する
+    useEffect(() => {
+        if (isLandscapePhone) {
+            if (!compassOpenRef.current) openedByLandscapeRef.current = true;
+            setIsCompassModeOpen(true);
+        } else if (openedByLandscapeRef.current) {
+            openedByLandscapeRef.current = false;
+            setIsCompassModeOpen(false);
+        }
+    }, [isLandscapePhone]);
+
+    const headingSensorOn = deviceHeading.status === 'requesting' || deviceHeading.status === 'active';
+    const handleHeadingSensorChange = useCallback((enabled: boolean) => {
+        if (enabled) startDeviceHeading();
+        else stopDeviceHeading();
+    }, [startDeviceHeading, stopDeviceHeading]);
 
     const handleSearchFocus = useCallback(() => {
         if (isMobileViewport) setMobileSheetLevel('expanded');
@@ -284,10 +316,10 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     ) : null;
 
     return (
-        // コンパスモード中は縦に 2 分割（上: コンパス、下: 地図）。地図の DOM は作り直さず、枠の高さだけ変える
-        <div className="flex h-full w-full flex-col text-white">
+        // コンパスモード中は 2 分割（縦長: 上コンパス・下地図 / 横長: 左コンパス・右地図）。地図の DOM は作り直さず、枠の大きさだけ変える
+        <div className={`flex h-full w-full text-white ${isLandscape ? 'flex-row' : 'flex-col'}`}>
             {isCompassModeOpen && (
-                <div className="relative h-1/2 shrink-0 border-b border-white/10">
+                <div className={`relative shrink-0 ${isLandscape ? 'h-full w-[46%] border-r border-white/10' : 'h-1/2 border-b border-white/10'}`}>
                     <CompassMode
                         data={compassViewModel}
                         isLoading={compassIsSampling}
@@ -298,11 +330,12 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         lowAccuracy={deviceHeading.lowAccuracy}
                         error={selectedLocation ? samplingError : compassAnalysis.error}
                         isSupported={deviceHeading.isSupported}
+                        onStartSensor={startDeviceHeading}
                         onClose={handleCompassModeClose}
                     />
                 </div>
             )}
-            <div className="relative min-h-0 flex-1">
+            <div className="relative min-h-0 min-w-0 flex-1">
                 <div ref={containerRef} className="h-full w-full touch-none" />
                 <UserLocationMarker
                     map={map}
@@ -321,6 +354,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                             rotation={rotation}
                             range={maxDistance}
                             isLoading={compassIsSampling}
+                            facing={deviceHeading.status === 'active' && deviceHeading.heading !== null}
                             onClick={handleCompassModeStart}
                         />
                     </div>
@@ -349,6 +383,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     onDebugModeChange={handleDebugModeChange}
                     buildingsEnabled={buildingsEnabled}
                     onBuildingsEnabledChange={handleBuildingsEnabledChange}
+                    headingSensorOn={headingSensorOn}
+                    onHeadingSensorChange={handleHeadingSensorChange}
+                    headingSensorNote={headingSensorOn ? null : deviceHeading.error}
                 />
 
                 <div className="pointer-events-none absolute left-4 right-4 top-[calc(84px+env(safe-area-inset-top))] z-[7000] flex flex-col gap-2 md:left-auto md:right-4 md:w-[520px]">
@@ -437,8 +474,11 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     onLocate={handleLocate}
                     onOpenMapModes={() => setIsMapModesOpen(true)}
                     isMapModesOpen={isMapModesOpen}
-                    style={isMobileViewport ? { bottom: isCompassModeOpen ? SPLIT_CONTROL_BOTTOM : MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] } : undefined}
-                    className="absolute right-4 z-[4500] md:bottom-8 md:right-8"
+                    style={isCompassModeOpen
+                        ? { bottom: SPLIT_CONTROL_BOTTOM }
+                        : isMobileViewport ? { bottom: MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] } : undefined}
+                    // 横向きのノッチ側に隠れないよう、右端は安全領域の内側に置く
+                    className="absolute right-[max(1rem,env(safe-area-inset-right))] z-[4500] md:bottom-8 md:right-[max(2rem,env(safe-area-inset-right))]"
                 />
                 )}
 

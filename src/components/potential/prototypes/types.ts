@@ -1,7 +1,7 @@
 // 方位角は地理方位で統一: 0° = 北, 90° = 東, 180° = 南, 270° = 西。
-export type PotentialRange = 50 | 100 | 200 | 500 | 1000;
+export type PotentialRange = 50 | 100 | 200 | 500 | 1000 | 5000 | 10000;
 
-export const POTENTIAL_RANGES: PotentialRange[] = [50, 100, 200, 500, 1000];
+export const POTENTIAL_RANGES: PotentialRange[] = [50, 100, 200, 500, 1000, 5000, 10000];
 
 export type PotentialSample = {
     bearing: number;

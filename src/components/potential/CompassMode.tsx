@@ -18,6 +18,8 @@ export type CompassModeProps = {
     lowAccuracy: boolean;
     error: string | null;
     isSupported: boolean;
+    // 向きセンサーを開始する（スマホを横向きにして自動で開いたときは、タップによる開始がないため）
+    onStartSensor: () => void;
     onClose: () => void;
 };
 
@@ -168,6 +170,7 @@ export function CompassMode({
     lowAccuracy,
     error,
     isSupported,
+    onStartSensor,
     onClose,
 }: CompassModeProps) {
     const dialRotation = heading ?? 0;
@@ -179,12 +182,18 @@ export function CompassMode({
         : error && !data && !isLoading ? error : statusMessage(status, isSupported, error);
 
     return (
-        // 画面上半分に置く分割表示。下半分は地図（PotentialMapView 側で配置）
+        // 分割表示の片側（縦長は上半分、横長は左半分）。もう片側は地図（PotentialMapView 側で配置）
         <div className="flex h-full flex-col overflow-hidden bg-[#06080c] text-white">
-            <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-1 pt-[calc(10px+env(safe-area-inset-top))] sm:px-6">
+            <header className="flex shrink-0 items-center justify-between gap-3 pb-1 pl-[max(1rem,env(safe-area-inset-left))] pr-4 pt-[calc(10px+env(safe-area-inset-top))]">
                 <div className="min-w-0">
                     <h2 className="text-sm font-semibold">コンパスモード</h2>
-                    <p className={`truncate text-[11px] ${lowAccuracy && status === 'active' ? 'text-amber-200/85' : 'text-white/50'}`}>{message}</p>
+                    {status === 'off' && isSupported ? (
+                        <button type="button" onClick={onStartSensor} className="mt-0.5 rounded-full border border-violet-300/40 bg-violet-700/70 px-3 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-violet-600">
+                            向きセンサーを開始
+                        </button>
+                    ) : (
+                        <p className={`truncate text-[11px] ${lowAccuracy && status === 'active' ? 'text-amber-200/85' : 'text-white/50'}`}>{message}</p>
+                    )}
                 </div>
                 <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/45 text-white/75 transition-colors hover:bg-white/10 hover:text-white" aria-label="コンパスモードを閉じる">
                     <X className="h-5 w-5" aria-hidden="true" />

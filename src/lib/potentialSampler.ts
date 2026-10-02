@@ -107,9 +107,16 @@ export function potentialValueFromPixel(pixel: [number, number, number, number])
     return Math.max(0, Math.min(MAX_POTENTIAL_VALUE, bestValue));
 }
 
-async function samplePotentialValue(location: MapLocation) {
-    const { tileX, tileY, pixelX, pixelY } = locationToTilePixel(location, SAMPLE_ZOOM);
-    const tile = await loadTile(tileX, tileY, SAMPLE_ZOOM);
+// 遠くの点まで z14 で読むと、10km 圏で 100 枚近いタイルが要る。距離が離れるほど広いタイル（低いズーム）で読む
+function sampleZoomForDistance(distance: number) {
+    if (distance <= 1000) return SAMPLE_ZOOM;
+    return distance <= 3000 ? 13 : 12;
+}
+
+async function samplePotentialValue(location: MapLocation, distance: number) {
+    const zoom = sampleZoomForDistance(distance);
+    const { tileX, tileY, pixelX, pixelY } = locationToTilePixel(location, zoom);
+    const tile = await loadTile(tileX, tileY, zoom);
     if (!tile) return null;
 
     const pixelIndex = (pixelY * TILE_SIZE + pixelX) * 4;
@@ -145,7 +152,8 @@ function destinationPoint(origin: MapLocation, angle: number, distance: number):
 }
 
 export const SAMPLE_BEARINGS = Array.from({ length: 24 }, (_, index) => index * 15);
-export const SAMPLE_DISTANCES = [0, 25, 50, 100, 200, 350, 500, 750, 1000];
+// 1km 以内は従来どおり。5km / 10km の範囲用に、遠方の距離を追加している
+export const SAMPLE_DISTANCES = [0, 25, 50, 100, 200, 350, 500, 750, 1000, 1500, 2000, 3000, 4000, 5000, 6500, 8000, 10000];
 
 // value は PNG の RGBA から色ランプを逆引きした近似値であり、Float32 の真値ではない。
 export type PotentialRawSample = {
@@ -155,10 +163,11 @@ export type PotentialRawSample = {
 };
 
 // 中心 (distance = 0) は 1 回だけ取得し、全方位で共有する。
-export async function samplePotentialGrid(origin: MapLocation): Promise<PotentialRawSample[]> {
-    const centerValue = samplePotentialValue(origin);
+// maxDistance 以内の距離だけ取得する（200m の範囲で遠くのタイルまで読まないため）。
+export async function samplePotentialGrid(origin: MapLocation, maxDistance: number): Promise<PotentialRawSample[]> {
+    const centerValue = samplePotentialValue(origin, 0);
     const rings = await Promise.all(
-        SAMPLE_DISTANCES.map(async (distance) => {
+        SAMPLE_DISTANCES.filter((distance) => distance <= maxDistance).map(async (distance) => {
             if (distance === 0) {
                 const value = await centerValue;
                 return SAMPLE_BEARINGS.map((bearing) => ({ bearing, distance, value }));
@@ -167,7 +176,7 @@ export async function samplePotentialGrid(origin: MapLocation): Promise<Potentia
                 SAMPLE_BEARINGS.map(async (bearing) => ({
                     bearing,
                     distance,
-                    value: await samplePotentialValue(destinationPoint(origin, bearing, distance)),
+                    value: await samplePotentialValue(destinationPoint(origin, bearing, distance), distance),
                 })),
             );
         }),
