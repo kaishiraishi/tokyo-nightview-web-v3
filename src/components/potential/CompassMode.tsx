@@ -1,13 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { X } from '../ui/icons';
 import { closeButton, glassSurface } from '../../styles/ui';
 import type { DeviceHeadingStatus } from '../../hooks/useDeviceHeading';
-import { CANVAS_SIZE, formatDistance, POLAR_INNER_RADIUS, POLAR_OUTER_RADIUS } from './prototypes/canvas';
+import { CANVAS_SIZE, compassName, formatDistance, POLAR_INNER_RADIUS, POLAR_OUTER_RADIUS } from './prototypes/canvas';
 import { SAMPLE_BEARINGS } from '../../lib/potentialSampler';
 import { potentialColorCss } from './prototypes/colorScale';
 import { smoothProfile } from './prototypes/interpolation';
 import { PolarHeatmapView } from './prototypes/PolarHeatmap';
-import { POTENTIAL_RANGES, type PotentialRange, type PotentialViewModel } from './prototypes/types';
+import { POTENTIAL_RANGES, type PolarCell, type PotentialRange, type PotentialViewModel } from './prototypes/types';
 
 export type CompassModeProps = {
     data: PotentialViewModel | null;
@@ -174,6 +174,8 @@ export function CompassMode({
     onStartSensor,
     onClose,
 }: CompassModeProps) {
+    // 文字盤をなぞった位置の値。吹き出しにせず、ヘッダーの状態表示の位置に出す
+    const [hovered, setHovered] = useState<PolarCell | null>(null);
     const dialRotation = heading ?? 0;
     const strongest = strongestDirection(data);
     const hasUsefulDirection = strongest !== null && strongest.strength > 0.015;
@@ -188,13 +190,23 @@ export function CompassMode({
             <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-1 pt-3">
                 <div className="min-w-0">
                     <h2 className="text-base font-semibold tracking-wide">コンパスモード</h2>
-                    {status === 'off' && isSupported ? (
-                        <button type="button" onClick={onStartSensor} className="mt-0.5 rounded-full border border-violet-300/40 bg-violet-700/70 px-3 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-violet-600">
-                            向きセンサーを開始
-                        </button>
-                    ) : (
-                        <p className={`truncate text-[11px] ${lowAccuracy && status === 'active' ? 'text-amber-200/85' : 'text-white/50'}`}>{message}</p>
-                    )}
+                    {/* 読み取り値は同じ位置に重ね、出し入れでヘッダーの高さ（文字盤の大きさ）が変わらないようにする */}
+                    <div className="relative">
+                        <div className={hovered ? 'invisible' : ''}>
+                            {status === 'off' && isSupported ? (
+                                <button type="button" onClick={onStartSensor} className="mt-0.5 rounded-full border border-violet-300/40 bg-violet-700/70 px-3 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-violet-600">
+                                    向きセンサーを開始
+                                </button>
+                            ) : (
+                                <p className={`truncate text-[11px] ${lowAccuracy && status === 'active' ? 'text-amber-200/85' : 'text-white/50'}`}>{message}</p>
+                            )}
+                        </div>
+                        {hovered && (
+                            <p className="pointer-events-none absolute inset-0 flex items-center truncate text-[11px] tabular-nums text-white/90" aria-live="polite">
+                                {compassName(hovered.bearing)} {Math.round(hovered.bearing)}° · {formatDistance(Math.round(hovered.distance))} · 強度 {Math.round(hovered.visualStrength * 100)}% · 値 {hovered.rawValue.toFixed(3)}
+                            </p>
+                        )}
+                    </div>
                 </div>
                 <button type="button" onClick={onClose} className={closeButton} aria-label="コンパスモードを閉じる">
                     <X className="h-5 w-5" aria-hidden="true" />
@@ -208,7 +220,7 @@ export function CompassMode({
 
                     <div className="absolute inset-[7%] overflow-hidden rounded-full border border-white/10 bg-[#080b10]/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.55)]">
                         {data ? (
-                            <PolarHeatmapView data={data} rotation={dialRotation} showCompassLabels={false} showDistanceLabels={false} />
+                            <PolarHeatmapView data={data} rotation={dialRotation} showCompassLabels={false} showDistanceLabels={false} showTooltip={false} onHoverChange={setHovered} />
                         ) : (
                             <div className="grid h-full place-items-center px-6 text-center text-[11px] leading-relaxed text-white/45">
                                 {isLoading ? '夜景ポテンシャルを読み込んでいます…' : '選択地点または現在地のデータがありません'}

@@ -12,8 +12,22 @@ export function PolarHeatmapView({
     rotation = 0,
     showCompassLabels = true,
     showDistanceLabels = true,
-}: { data: PotentialViewModel; rotation?: number; showCompassLabels?: boolean; showDistanceLabels?: boolean }) {
-    const [hovered, setHovered] = useState<PolarCell | null>(null);
+    showTooltip = true,
+    onHoverChange,
+}: {
+    data: PotentialViewModel;
+    rotation?: number;
+    showCompassLabels?: boolean;
+    showDistanceLabels?: boolean;
+    // false にすると吹き出しを出さない（呼び出し側が onHoverChange で受けて、別の場所に表示する）
+    showTooltip?: boolean;
+    onHoverChange?: (cell: PolarCell | null) => void;
+}) {
+    const [hovered, setHoveredState] = useState<PolarCell | null>(null);
+    const setHovered = (cell: PolarCell | null) => {
+        setHoveredState(cell);
+        onHoverChange?.(cell);
+    };
     const { bearingCount, distanceCount, cells } = data.polarField;
 
     const ref = useDrawCanvas((context) => {
@@ -95,7 +109,7 @@ export function PolarHeatmapView({
                 onPointerLeave={() => setHovered(null)}
                 aria-label="Polar Heatmap: 方向×距離×強度"
             />
-            {hovered && (
+            {showTooltip && hovered && (
                 <div className="pointer-events-none absolute left-2 top-2 rounded-lg border border-white/10 bg-black/80 px-2 py-1.5 text-[10px] leading-relaxed text-white/80">
                     <div className="font-semibold">{compassName(hovered.bearing)} {Math.round(hovered.bearing)}°</div>
                     <div>距離 {Math.round(hovered.distance)}m</div>
