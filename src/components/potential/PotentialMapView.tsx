@@ -24,6 +24,7 @@ import { usePosts } from '../../hooks/usePosts';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { useDeviceHeading } from '../../hooks/useDeviceHeading';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useRangeRings } from '../../hooks/useRangeRings';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import { normalizeAngle } from '../../lib/heading';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -112,6 +113,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     });
     const compassViewModel = selectedLocation ? viewModel : compassAnalysis.viewModel;
     const compassIsSampling = selectedLocation ? isSampling : compassAnalysis.isLoading;
+    // コンパスモード中は、コンパスの距離ガイドと同じ円を地図に重ねる（中心はコンパスと同じ地点）
+    useRangeRings(map, isLoaded, selectedLocation ?? currentLocation, maxDistance, isCompassModeOpen);
     const rotation = deviceHeading.status === 'active' && deviceHeading.heading !== null ? deviceHeading.heading : normalizeAngle(mapBearing);
 
     useEffect(() => {
@@ -238,8 +241,10 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
 
     const handleCompassModeStart = useCallback(() => {
         startDeviceHeading();
+        // 距離リングとコンパスの中心になる現在地を取得する（選択地点があればそれが中心なので不要）
+        if (!selectedLocation) startUserLocation();
         setIsCompassModeOpen(true);
-    }, [startDeviceHeading]);
+    }, [selectedLocation, startDeviceHeading, startUserLocation]);
 
     // コンパスモードを閉じてもセンサーは止めない（左上のミニコンパスが向きを出し続ける）。止めるのは設定のスイッチ
     const handleCompassModeClose = useCallback(() => {

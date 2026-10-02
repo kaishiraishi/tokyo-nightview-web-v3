@@ -1,6 +1,6 @@
 import { useState, type PointerEvent } from 'react';
 import { potentialColorCss } from './colorScale';
-import { annularSector, CANVAS_SIZE, CENTER, compassName, drawCenterMarker, formatDistance, POLAR_INNER_RADIUS, POLAR_OUTER_RADIUS, useDrawCanvas } from './canvas';
+import { annularSector, CANVAS_SIZE, CENTER, compassName, drawCenterMarker, formatDistance, POLAR_INNER_RADIUS, POLAR_OUTER_RADIUS, RANGE_GUIDE_FRACTIONS, useDrawCanvas } from './canvas';
 import { drawCompassLabels, rotateCompassCanvas } from '../compassCanvas';
 import type { PolarCell, PotentialViewModel } from './types';
 
@@ -51,7 +51,7 @@ export function PolarHeatmapView({
         context.font = '11px system-ui, sans-serif';
         context.textAlign = 'left';
         context.textBaseline = 'alphabetic';
-        for (const fraction of [0.25, 0.5, 1]) {
+        for (const fraction of RANGE_GUIDE_FRACTIONS) {
             const radius = INNER_RADIUS + fraction * (OUTER_RADIUS - INNER_RADIUS);
             context.beginPath();
             context.arc(CENTER, CENTER, radius, 0, Math.PI * 2);

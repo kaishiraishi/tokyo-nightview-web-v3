@@ -130,7 +130,7 @@ async function samplePotentialValue(location: MapLocation, distance: number) {
     return potentialValueFromPixel(pixel);
 }
 
-function destinationPoint(origin: MapLocation, angle: number, distance: number): MapLocation {
+export function destinationPoint(origin: MapLocation, angle: number, distance: number): MapLocation {
     const earthRadius = 6_371_000;
     const bearing = (angle * Math.PI) / 180;
     const latitude = (origin.lat * Math.PI) / 180;
