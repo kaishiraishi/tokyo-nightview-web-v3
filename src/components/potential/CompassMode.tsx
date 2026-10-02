@@ -183,7 +183,7 @@ export function CompassMode({
 
     return (
         // 地図の上に浮かべるカード（位置と大きさは PotentialMapView 側）。地図は全面のまま、カードの外側から透けて見える
-        <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-white/20 bg-[#05070b]/95 text-white shadow-[0_16px_48px_rgba(0,0,0,0.7)] backdrop-blur-md">
+        <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-white/20 bg-[#05070b]/80 text-white shadow-[0_16px_48px_rgba(0,0,0,0.7)] backdrop-blur-md">
             <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-1 pt-3">
                 <div className="min-w-0">
                     <h2 className="text-sm font-semibold">コンパスモード</h2>
@@ -205,7 +205,7 @@ export function CompassMode({
                 <div className="relative" style={{ width: DIAL_SIZE, aspectRatio: '1 / 1' }}>
                     <CompassBezel rotation={dialRotation} profile={profile} />
 
-                    <div className="absolute inset-[7%] overflow-hidden rounded-full border border-white/10 bg-[#080b10] shadow-[inset_0_0_40px_rgba(0,0,0,0.55)]">
+                    <div className="absolute inset-[7%] overflow-hidden rounded-full border border-white/10 bg-[#080b10]/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.55)]">
                         {data ? (
                             <PolarHeatmapView data={data} rotation={dialRotation} showCompassLabels={false} showDistanceLabels={false} />
                         ) : (
