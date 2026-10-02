@@ -85,7 +85,7 @@ export function SearchField({
 
             {showResults && searchResults.length > 0 && (
                 <div
-                    className="absolute left-0 right-0 top-[calc(100%+8px)] overflow-hidden rounded-2xl border border-white/10 bg-black/95 shadow-2xl backdrop-blur-xl"
+                    className="absolute left-0 right-0 top-[calc(100%+8px)] overflow-hidden rounded-2xl border border-white/15 bg-[#05070b]/95 shadow-2xl backdrop-blur-xl"
                     onMouseLeave={onCloseResults}
                 >
                     <div className="max-h-[42dvh] overflow-y-auto py-2">

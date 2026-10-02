@@ -10,7 +10,7 @@ const RING_SEGMENTS = 120;
 const FIT_PADDING = 32;
 const FIT_MAX_ZOOM = 17.5;
 // コンパスのカードが地図の上に浮かぶ余白（カード自体の外側のすき間を含む）
-const CARD_GAP = 12;
+const CARD_GAP = 16;
 // 地図の他の淡い紫（枠・フォーカス）に合わせる
 const RING_COLOR = '#c4b5fd';
 const LABEL_CLASS = 'pointer-events-none rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-violet-100 backdrop-blur-sm';

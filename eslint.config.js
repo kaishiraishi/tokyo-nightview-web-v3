@@ -10,6 +10,8 @@ export default [
             'public/**',
             'tools/**',
             'tasks/**',
+            // ローカルに入れた外部スキル（git 管理外）
+            '.claude/**',
             'node_modules/**',
             // 旧 Explore/Analyze 画面は現行主画面の対象外。旧コードは変更しない。
             'src/components/map/**',

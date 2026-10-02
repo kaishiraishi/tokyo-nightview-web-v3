@@ -14,7 +14,7 @@ import {
 import { type ReactNode, useState } from 'react';
 import type { FanConfig } from '../map/types';
 import { PanelViewSelector, type PanelView } from '../potential/PanelViewSelector';
-import { glassPanel, textMuted, textPrimary } from '../../styles/ui';
+import { closeButton, glassSurface, textMuted, textPrimary } from '../../styles/ui';
 
 type AppMenuProps = {
   isOpen: boolean;
@@ -85,14 +85,14 @@ export function AppMenu({
         }}
       />
 
-      <div className={`${glassPanel} relative w-full max-w-md overflow-hidden rounded-[2.5rem] text-white shadow-2xl animate-in fade-in zoom-in duration-200`}>
+      <div className={`${glassSurface} relative w-full max-w-md overflow-hidden rounded-[28px] text-white animate-in fade-in zoom-in duration-200`}>
         <div className="flex max-h-[90vh] flex-col">
           <div className="relative flex items-center justify-center border-b border-white/10 px-6 py-5">
             {activeView === 'settings' && (
               <button
                 type="button"
                 onClick={() => setActiveView('main')}
-                className="absolute left-6 flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full bg-white/5 transition-all hover:bg-white/10"
+                className={`absolute left-6 ${closeButton}`}
                 aria-label="メニューに戻る"
               >
                 <ChevronLeft size={20} />
@@ -107,7 +107,7 @@ export function AppMenu({
                 event.stopPropagation();
                 handleClose();
               }}
-              className="absolute right-6 flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full bg-white/10 transition-all hover:bg-white/20 hover:scale-110 active:scale-90"
+              className={`absolute right-6 ${closeButton}`}
               aria-label="メニューを閉じる"
             >
               <X size={24} />
@@ -127,7 +127,7 @@ export function AppMenu({
                   </div>
                 </div>
 
-                <div className="mb-8 rounded-[2rem] border border-white/10 bg-white/[0.06] p-6 shadow-xl">
+                <div className="mb-8 rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6">
                   <div className="flex justify-around text-center">
                     <div className="flex flex-col items-center">
                       <div className={`text-3xl font-black tabular-nums tracking-tighter ${textPrimary}`}>{foundCount}</div>

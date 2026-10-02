@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BookOpen, ChevronRight, Layers, X } from '../ui/icons';
+import { closeButton, glassSurface } from '../../styles/ui';
 import aerialThumbnail from '../../assets/map-modes/aerial.webp';
 import potentialThumbnail from '../../assets/map-modes/potential.webp';
 import standardThumbnail from '../../assets/map-modes/standard.webp';
@@ -118,7 +119,7 @@ export function MapModesModal({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="map-modes-title"
-                className="max-h-full w-full max-w-[540px] overflow-y-auto rounded-[28px] border border-white/15 bg-[#121218]/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.65)] backdrop-blur-2xl sm:p-5"
+                className={`max-h-full w-full max-w-[540px] overflow-y-auto rounded-[28px] ${glassSurface} p-4 sm:p-5`}
                 onMouseDown={(event) => event.stopPropagation()}
             >
                 <header className="flex items-center justify-between gap-3">
@@ -126,7 +127,7 @@ export function MapModesModal({
                         <Layers className="h-4 w-4 text-violet-200" aria-hidden="true" />
                         <h2 id="map-modes-title" className="text-base font-semibold tracking-wide text-white">表示モード</h2>
                     </div>
-                    <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/15 hover:text-white" aria-label="表示モードを閉じる">
+                    <button type="button" onClick={onClose} className={closeButton} aria-label="表示モードを閉じる">
                         <X className="h-5 w-5" aria-hidden="true" />
                     </button>
                 </header>

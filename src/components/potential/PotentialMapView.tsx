@@ -343,8 +343,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     <div
                         className="absolute z-[4500]"
                         style={isLandscape
-                            ? { top: 12, bottom: 12, left: 'max(12px, env(safe-area-inset-left))', width: `${COMPASS_CARD_LANDSCAPE_WIDTH * 100}%` }
-                            : { left: 12, right: 12, top: 'calc(12px + env(safe-area-inset-top))', height: `${COMPASS_CARD_PORTRAIT_HEIGHT * 100}%` }}
+                            ? { top: 16, bottom: 16, left: 'max(16px, env(safe-area-inset-left))', width: `${COMPASS_CARD_LANDSCAPE_WIDTH * 100}%` }
+                            : { left: 16, right: 16, top: 'calc(16px + env(safe-area-inset-top))', height: `${COMPASS_CARD_PORTRAIT_HEIGHT * 100}%` }}
                     >
                     <CompassMode
                         data={compassViewModel}

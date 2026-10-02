@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '../ui/icons';
+import { glassSurface } from '../../styles/ui';
 import { MOBILE_SHEET_HEIGHTS, type MobileSheetLevel } from './mobileSheet';
 
 type LayerMenuProps = {
@@ -71,9 +72,9 @@ export function LayerMenu({ isOpen, onToggle, children, mobileLevel }: LayerMenu
                 ${!isMobile && isOpen ? 'animate-panel-slide-in' : ''}
                 ${isMobile 
                     ? isAppleSheet
-                        ? 'fixed bottom-0 left-0 right-0 overflow-hidden rounded-t-[28px] border border-b-0 border-white/10 bg-black/75 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl'
+                        ? 'fixed bottom-0 left-0 right-0 overflow-hidden rounded-t-[28px] border border-b-0 border-white/15 bg-[#05070b]/80 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl'
                         : 'fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-md rounded-t-2xl border-t border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] pb-[env(safe-area-inset-bottom)]'
-                    : 'absolute top-4 left-4 bottom-4 w-80 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl'
+                    : `absolute top-4 left-4 bottom-4 w-80 rounded-[28px] ${glassSurface}`
                 }
                 ${isAppleSheet
                     ? 'translate-y-0 translate-x-0'
@@ -112,7 +113,7 @@ export function LayerMenu({ isOpen, onToggle, children, mobileLevel }: LayerMenu
                     onClick={onToggle}
                     aria-expanded={isOpen}
                     aria-label={isOpen ? 'レイヤーメニューを閉じる' : 'レイヤーメニューを開く'}
-                    className="absolute -right-10 top-1/2 -translate-y-1/2 w-10 h-24 bg-black/80 backdrop-blur-xl border border-l-0 border-white/20 rounded-r-2xl flex items-center justify-center text-white/50 hover:text-white hover:bg-black/90 transition-all duration-300 group shadow-[10px_0_30px_rgba(0,0,0,0.5)]"
+                    className="absolute -right-10 top-1/2 -translate-y-1/2 w-10 h-24 bg-[#05070b]/80 backdrop-blur-xl border border-l-0 border-white/15 rounded-r-2xl flex items-center justify-center text-white/50 hover:text-white hover:bg-[#05070b]/95 transition-all duration-300 group shadow-[10px_0_30px_rgba(0,0,0,0.5)]"
                 >
                     <div className="flex flex-col items-center gap-2 group-hover:scale-110 transition-transform">
                         {isOpen ? <ChevronLeft size={24} /> : <ChevronRight size={24} />}

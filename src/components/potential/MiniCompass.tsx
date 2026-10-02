@@ -1,3 +1,4 @@
+import { glassControl } from '../../styles/ui';
 import { DirectionalFieldView } from './prototypes/DirectionalField';
 import type { PotentialRange, PotentialViewModel } from './prototypes/types';
 
@@ -26,7 +27,7 @@ export function MiniCompass({ data, rotation, range, isLoading, facing, onClick 
             aria-label={`コンパスモードを開く（範囲 ${label}）`}
             title="コンパスモード"
             // 地図の道路やラベルと重なっても読めるよう、他の地図ボタンと同じガラス調の円を敷く
-            className="relative grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/10 bg-black/55 shadow-lg backdrop-blur-md transition-transform active:scale-95"
+            className={`relative grid h-16 w-16 shrink-0 place-items-center rounded-full ${glassControl} transition-transform active:scale-95`}
         >
             <span className={`pointer-events-none absolute inset-0 ${isLoading ? 'opacity-45' : ''}`} aria-hidden="true">
                 {data ? (

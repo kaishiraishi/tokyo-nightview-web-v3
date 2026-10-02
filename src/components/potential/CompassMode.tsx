@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { X } from '../ui/icons';
+import { closeButton, glassSurface } from '../../styles/ui';
 import type { DeviceHeadingStatus } from '../../hooks/useDeviceHeading';
 import { CANVAS_SIZE, formatDistance, POLAR_INNER_RADIUS, POLAR_OUTER_RADIUS } from './prototypes/canvas';
 import { SAMPLE_BEARINGS } from '../../lib/potentialSampler';
@@ -143,7 +144,7 @@ function NavScale({ range, onRangeChange }: { range: PotentialRange; onRangeChan
     const index = POTENTIAL_RANGES.indexOf(range);
     const narrower = index > 0 ? POTENTIAL_RANGES[index - 1] : null;
     const wider = index >= 0 && index < POTENTIAL_RANGES.length - 1 ? POTENTIAL_RANGES[index + 1] : null;
-    const buttonClass = 'grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-black/50 text-lg leading-none text-white/85 transition-colors hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-black/50';
+    const buttonClass = 'grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/50 text-lg leading-none text-white/85 transition-colors hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-black/50';
 
     return (
         <>
@@ -183,10 +184,10 @@ export function CompassMode({
 
     return (
         // 地図の上に浮かべるカード（位置と大きさは PotentialMapView 側）。地図は全面のまま、カードの外側から透けて見える
-        <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-white/20 bg-[#05070b]/80 text-white shadow-[0_16px_48px_rgba(0,0,0,0.7)] backdrop-blur-md">
+        <div className={`flex h-full flex-col overflow-hidden rounded-[28px] ${glassSurface} text-white`}>
             <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-1 pt-3">
                 <div className="min-w-0">
-                    <h2 className="text-sm font-semibold">コンパスモード</h2>
+                    <h2 className="text-base font-semibold tracking-wide">コンパスモード</h2>
                     {status === 'off' && isSupported ? (
                         <button type="button" onClick={onStartSensor} className="mt-0.5 rounded-full border border-violet-300/40 bg-violet-700/70 px-3 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-violet-600">
                             向きセンサーを開始
@@ -195,7 +196,7 @@ export function CompassMode({
                         <p className={`truncate text-[11px] ${lowAccuracy && status === 'active' ? 'text-amber-200/85' : 'text-white/50'}`}>{message}</p>
                     )}
                 </div>
-                <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-black/45 text-white/75 transition-colors hover:bg-white/10 hover:text-white" aria-label="コンパスモードを閉じる">
+                <button type="button" onClick={onClose} className={closeButton} aria-label="コンパスモードを閉じる">
                     <X className="h-5 w-5" aria-hidden="true" />
                 </button>
             </header>

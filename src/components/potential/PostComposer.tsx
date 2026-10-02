@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type maplibregl from 'maplibre-gl';
+import { glassSurface } from '../../styles/ui';
 import { AlertCircle, Camera, Image as ImageIcon, MapPin, Pin, Send } from '../ui/icons';
 import { createPost, uploadPhoto } from '../../lib/postsApi';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
@@ -131,7 +132,7 @@ export function PostComposer({ map, currentLocation, onRequestLocation, onPosted
                     <Camera className="h-5 w-5 text-violet-300 transition-transform group-hover:scale-110" aria-hidden="true" />
                 </button>
                 {isOpen && (
-                    <div ref={modalRef} className="absolute bottom-14 right-0 max-h-[70dvh] w-72 overflow-y-auto rounded-xl border border-white/10 bg-black/80 p-4 shadow-lg backdrop-blur-md">
+                    <div ref={modalRef} className={`absolute bottom-14 right-0 max-h-[70dvh] w-72 overflow-y-auto rounded-2xl ${glassSurface} p-4`}>
                         <div className="mb-3 text-sm font-medium text-white/90">夜景を投稿</div>
                         {!isSupabaseConfigured && (
                             <div className="mb-3 flex items-start gap-2 rounded border border-amber-500/20 bg-amber-500/10 p-2 text-[10px] text-amber-200">
