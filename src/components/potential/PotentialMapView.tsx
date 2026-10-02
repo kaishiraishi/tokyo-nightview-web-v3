@@ -24,6 +24,7 @@ import { usePosts } from '../../hooks/usePosts';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { useDeviceHeading } from '../../hooks/useDeviceHeading';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { usePixelInspector } from '../../hooks/usePixelInspector';
 import { useRangeRings } from '../../hooks/useRangeRings';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import { normalizeAngle } from '../../lib/heading';
@@ -116,6 +117,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     });
     const compassViewModel = selectedLocation ? viewModel : compassAnalysis.viewModel;
     const compassIsSampling = selectedLocation ? isSampling : compassAnalysis.isLoading;
+    // デバッグモードでは、右クリックした地点の画素・値・上位 % を見られる（投稿モードでは使わない）
+    usePixelInspector(map, isLoaded, debugMode && !isPostMode);
     // コンパスモード中は、コンパスの距離ガイドと同じ円を地図に重ねる（中心はコンパスと同じ地点）
     useRangeRings(
         map,

@@ -165,3 +165,25 @@ body {
         animation: none;
     }
 }
+
+/* デバッグモードの画素検査ポップアップ（右クリック）。他の面と同じガラス調の暗色 */
+.pixel-inspector .maplibregl-popup-content {
+    background: rgba(5, 7, 11, 0.9);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 12px 14px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(16px);
+}
+.pixel-inspector .maplibregl-popup-close-button { color: rgba(255, 255, 255, 0.6); font-size: 18px; padding: 2px 8px; }
+.pixel-inspector.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: rgba(5, 7, 11, 0.9); }
+.pixel-inspector.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: rgba(5, 7, 11, 0.9); }
+.pixel-inspector.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: rgba(5, 7, 11, 0.9); }
+.pixel-inspector.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: rgba(5, 7, 11, 0.9); }
+.pixel-inspector-card { display: grid; gap: 4px; min-width: 220px; font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.pixel-inspector-row { display: flex; justify-content: space-between; gap: 12px; }
+.pixel-inspector-row > span:first-child { color: rgba(255, 255, 255, 0.5); flex-shrink: 0; }
+.pixel-inspector-row > span:last-child { text-align: right; }
+.pixel-inspector-strong { font-size: 13px; font-weight: 700; color: #fff; }
+.pixel-inspector-note { margin-top: 4px; font-size: 10px; color: rgba(255, 255, 255, 0.4); }

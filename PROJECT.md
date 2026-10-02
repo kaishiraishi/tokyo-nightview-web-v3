@@ -73,7 +73,7 @@
 - 探索 / 投稿の切替は `MapModeToggle`（地図アイコン = 探索、紫のスパークル = 投稿）。`aria-pressed` で現在の mode を示す。メニューの「投稿」行も投稿モードへ切り替える。
 - 地図のポテンシャル表示は「絞って探す」（閾値 0.006）に固定。
 - PLATEAU の 3D 建物（`useMapLibre` の `plateau-bldg-extrusion`、第三者がホスティングしている MVT `ysk766.github.io/plateau_tokyo_2023_mvt_lod1`）は、メニュー → 設定 の「3D 建物」スイッチでオン/オフする（`nightview.buildings3d`、既定 ON）。このタイルは tippecanoe の `--drop-densest-as-needed` で密集地の建物が間引かれていて、西新宿の高層ビル街などが欠ける。自前での再生成は検討中
-- 探索モードのシート（モバイルは下部、PC は左パネル）は検索欄だけ（2026-10-02 に方向・距離カードの中身を撤去）。方向・距離の分析はミニコンパス → コンパスモードで見る。地図タップによる地点選択（紫のピン）はデバッグモードのときだけ有効で、オフでは現在地が中心（オフにすると選択地点も消える）。選択地点があり、かつデバッグモードのときだけ Street View リンクをシートに出す。検索結果を選ぶと、モバイルではシートを閉じる。以前の 4 種類（classicField / classicPolar / field / polar、`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`）は主画面から呼ばれていない。設定の `PanelViewSelector`（`nightview.panelView`）は残っているが、今は表示に影響しない。メニュー・設定画面はトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）
+- 探索モードのシート（モバイルは下部、PC は左パネル）は検索欄だけ（2026-10-02 に方向・距離カードの中身を撤去）。方向・距離の分析はミニコンパス → コンパスモードで見る。地図タップによる地点選択（紫のピン）はデバッグモードのときだけ有効で、オフでは現在地が中心（オフにすると選択地点も消える）。選択地点があり、かつデバッグモードのときだけ Street View リンクをシートに出す。デバッグモードでは地図を右クリックすると、その地点の z14 画素（rgba）・復元した値・光っている画素全体の中での「上位 X%」をポップアップで見られる（`usePixelInspector`。順位表は `src/lib/potentialQuantiles.ts`、`scripts/potential-quantiles.py` で生成。投稿モードでは無効。スマホには右クリックがないので PC のみ）。検索結果を選ぶと、モバイルではシートを閉じる。以前の 4 種類（classicField / classicPolar / field / polar、`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`）は主画面から呼ばれていない。設定の `PanelViewSelector`（`nightview.panelView`）は残っているが、今は表示に影響しない。メニュー・設定画面はトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）
 - 選択地点からは Google Maps Street View を別タブで開くリンクだけを出す。このリンクはデバッグモード時のみ表示し、デバッグモードは メニュー → 設定 のスイッチで切り替える（`localStorage` の `nightview.debugMode`、既定 ON、`src/lib/storedSettings.ts`）（規約上、Google 画像・API を MapLibre 画面に埋め込まない。Maps Platform ToS §3.2.3(e)）。
 - 探索モードでは旧 V2 の ScanControlPanel / 旧探索用 deck.gl UI は使わない。投稿モードでは明示許可された既存 `MapViewExplore` の投稿 UI だけを表示する。
 
@@ -81,6 +81,7 @@
 
 - 元データ: Float32 GeoTIFF（EPSG:6677）。生成側の入力パスは `scripts/make-potential-tiles.sh` の `IN_TIF`。
 - 生成: `scripts/make-potential-tiles.sh` が (1) EPSG:3857 へ再投影 (2) `scripts/smooth-potential-raster.py` で 90m グリッドをマスク付きガウス平滑化 (3) 色ランプ (4) `gdaldem color-relief` (5) `gdal2tiles.py --xyz` でズーム 10–14 の XYZ PNG を `tiles-work/potential-png/` に出力 (6) `scripts/bake-potential-tiles.py`（numpy + Pillow）が、色ランプの逆引きで値が閾値（0.006）未満のピクセルを透明にし、可逆 WebP として `public/NightViewPotential_tiles/` に書き出す。全面が透明になるタイルも透明な WebP として必ず置く（404 だと MapLibre が親タイルで代用するため）。タイルを作り直したら、生成物をコミットする
+- タイルや色ランプ・閾値を変えたら `python3 scripts/potential-quantiles.py` で `src/lib/potentialQuantiles.ts`（デバッグ用の順位表）も再生成してコミットする。
 - 色ランプ・`MAX_POTENTIAL_VALUE = 0.1635`・閾値 `0.006` は `scripts/make-potential-tiles.sh`、`scripts/bake-potential-tiles.py`、`src/lib/potentialSampler.ts`（`POTENTIAL_COLOR_RAMP` / `MAX_POTENTIAL_VALUE` / `POTENTIAL_THRESHOLD`）で必ず同期する。
 - クライアント: `src/hooks/useMapLibre.ts` が WebP タイルを通常の MapLibre ラスターソース 1 本（`potential-nightview` / `potential-nightview-layer`）として表示する。閾値処理はクライアントでは行わない。タイル URL は `import.meta.env.BASE_URL` 経由。表示の ON/OFF と不透明度は `PotentialMapView` がレイヤーのプロパティで切り替える
 - 値の扱い: タイルの RGBA から色ランプを逆引きした近似値。閾値未満のピクセルは焼き込みで透明になっているため、サンプリングでは 0 として読まれる（以前は小さな正の値だった。表示用 ViewModel は閾値未満を 0 扱いにするので見た目は同じ）であり、Float32 の真値ではない。0.1635 以上は strength 1 に飽和するため、高ポテンシャル同士の比較はできない。将来は数値タイル / COG を検討する（Prototype 比較後）。

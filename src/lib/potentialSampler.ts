@@ -113,8 +113,17 @@ function sampleZoomForDistance(distance: number) {
     return distance <= 3000 ? 13 : 12;
 }
 
-async function samplePotentialValue(location: MapLocation, distance: number) {
-    const zoom = sampleZoomForDistance(distance);
+export type PotentialPixelInfo = {
+    pixel: [number, number, number, number];
+    value: number;
+    zoom: number;
+    tileX: number;
+    tileY: number;
+    pixelX: number;
+    pixelY: number;
+};
+
+async function readPotentialPixel(location: MapLocation, zoom: number): Promise<PotentialPixelInfo | null> {
     const { tileX, tileY, pixelX, pixelY } = locationToTilePixel(location, zoom);
     const tile = await loadTile(tileX, tileY, zoom);
     if (!tile) return null;
@@ -127,7 +136,17 @@ async function samplePotentialValue(location: MapLocation, distance: number) {
         tile.pixels[pixelIndex + 3],
     ];
 
-    return potentialValueFromPixel(pixel);
+    return { pixel, value: potentialValueFromPixel(pixel), zoom, tileX, tileY, pixelX, pixelY };
+}
+
+// デバッグモードの検査用: 地点の最も細かい（z14）タイルの画素と、そこから復元した値を返す。タイルがなければ null
+export function inspectPotentialPixel(location: MapLocation) {
+    return readPotentialPixel(location, SAMPLE_ZOOM);
+}
+
+async function samplePotentialValue(location: MapLocation, distance: number) {
+    const info = await readPotentialPixel(location, sampleZoomForDistance(distance));
+    return info ? info.value : null;
 }
 
 export function destinationPoint(origin: MapLocation, angle: number, distance: number): MapLocation {
