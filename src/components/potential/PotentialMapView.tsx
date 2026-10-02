@@ -43,7 +43,10 @@ const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 24px)';
 // コンパス分割表示中はシートがないので、地図下端の出典表示（2 行になることがある）の上にボタン列を置く
 const SPLIT_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom))';
 
-// 横長の画面ではコンパスモードを左右に分割する（左: コンパス、右: 地図）。縦長は上下（上: コンパス、下: 地図）
+// コンパスモードのカードは地図の上に浮かべる。横長は左（地図の幅の割合）、縦長は上（地図の高さの割合）。
+// 地図側は、カードに隠れる分を避けて距離リングを収める（useRangeRings の obscured）
+const COMPASS_CARD_PORTRAIT_HEIGHT = 0.4;
+const COMPASS_CARD_LANDSCAPE_WIDTH = 0.44;
 const LANDSCAPE_QUERY = '(orientation: landscape)';
 // スマホを横向きにしたとき（高さが小さい横長）は、コンパスモードを自動で開く。PC のウィンドウでは開かない
 const LANDSCAPE_PHONE_QUERY = '(orientation: landscape) and (max-height: 520px)';
@@ -114,7 +117,16 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const compassViewModel = selectedLocation ? viewModel : compassAnalysis.viewModel;
     const compassIsSampling = selectedLocation ? isSampling : compassAnalysis.isLoading;
     // コンパスモード中は、コンパスの距離ガイドと同じ円を地図に重ねる（中心はコンパスと同じ地点）
-    useRangeRings(map, isLoaded, selectedLocation ?? currentLocation, maxDistance, isCompassModeOpen);
+    useRangeRings(
+        map,
+        isLoaded,
+        selectedLocation ?? currentLocation,
+        maxDistance,
+        isCompassModeOpen,
+        isLandscape
+            ? { edge: 'left', fraction: COMPASS_CARD_LANDSCAPE_WIDTH }
+            : { edge: 'top', fraction: COMPASS_CARD_PORTRAIT_HEIGHT },
+    );
     const rotation = deviceHeading.status === 'active' && deviceHeading.heading !== null ? deviceHeading.heading : normalizeAngle(mapBearing);
 
     useEffect(() => {
@@ -324,10 +336,16 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     ) : null;
 
     return (
-        // コンパスモード中は 2 分割（縦長: 上コンパス・下地図 / 横長: 左コンパス・右地図）。地図の DOM は作り直さず、枠の大きさだけ変える
-        <div className={`flex h-full w-full text-white ${isLandscape ? 'flex-row' : 'flex-col'}`}>
-            {isCompassModeOpen && (
-                <div className={`relative shrink-0 ${isLandscape ? 'h-full w-[46%] border-r border-white/10' : 'h-1/2 border-b border-white/10'}`}>
+        // コンパスモード中も地図は全面のまま、その上にコンパスのカードを浮かべる（縦長: 上 / 横長: 左）
+        <div className="h-full w-full text-white">
+            <div className="relative h-full w-full">
+                {isCompassModeOpen && (
+                    <div
+                        className="absolute z-[4500]"
+                        style={isLandscape
+                            ? { top: 12, bottom: 12, left: 'max(12px, env(safe-area-inset-left))', width: `${COMPASS_CARD_LANDSCAPE_WIDTH * 100}%` }
+                            : { left: 12, right: 12, top: 'calc(12px + env(safe-area-inset-top))', height: `${COMPASS_CARD_PORTRAIT_HEIGHT * 100}%` }}
+                    >
                     <CompassMode
                         data={compassViewModel}
                         isLoading={compassIsSampling}
@@ -341,9 +359,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         onStartSensor={startDeviceHeading}
                         onClose={handleCompassModeClose}
                     />
-                </div>
-            )}
-            <div className="relative min-h-0 min-w-0 flex-1">
+                    </div>
+                )}
                 <div ref={containerRef} className="h-full w-full touch-none" />
                 <UserLocationMarker
                     map={map}

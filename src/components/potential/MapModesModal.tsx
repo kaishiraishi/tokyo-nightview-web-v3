@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Layers, X } from '../ui/icons';
+import { BookOpen, ChevronRight, Layers, X } from '../ui/icons';
 import aerialThumbnail from '../../assets/map-modes/aerial.webp';
 import potentialThumbnail from '../../assets/map-modes/potential.webp';
 import standardThumbnail from '../../assets/map-modes/standard.webp';
@@ -29,6 +29,42 @@ function activeMode(potentialEnabled: boolean, aerialEnabled: boolean): MapModeI
     if (aerialEnabled) return 'aerial';
     if (potentialEnabled) return 'potential';
     return 'standard';
+}
+
+// 値の算出方法はここには書かない（算出元は別リポジトリ・ローカルのデータで、このアプリは結果のタイルを読むだけ）。
+// 読み方と限界だけを、アプリが実際にしていることに沿って説明する
+function PotentialExplainer() {
+    return (
+        <details className="group mt-3 rounded-2xl border border-white/10 bg-white/[0.035]">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-xs font-semibold text-white/85 [&::-webkit-details-marker]:hidden">
+                <BookOpen className="h-4 w-4 text-violet-200" aria-hidden="true" />
+                <span className="flex-1">夜景ポテンシャルとは</span>
+                <ChevronRight className="h-4 w-4 text-white/45 transition-transform group-open:rotate-90" aria-hidden="true" />
+            </summary>
+            <div className="space-y-3 px-3 pb-3.5 text-[11px] leading-relaxed text-white/65">
+                <p>東京都の各地点について、夜景を楽しめそうな度合いを色で表した地図です。夜景スポットを探すときの目安にします。</p>
+                <div>
+                    <h3 className="mb-1 font-semibold text-white/85">見かた</h3>
+                    <ul className="list-disc space-y-1 pl-4">
+                        <li>黄色・オレンジに近いほど高く、暗い紫ほど低い値です。</li>
+                        <li>値が小さい場所は色を付けず、地図をそのまま見せています。</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 className="mb-1 font-semibold text-white/85">コンパスで探す</h3>
+                    <p>左上のコンパスをタップすると、今いる場所（ピンを立てたときはその地点）の周りで、どの方向のどのくらい先が高いかを見られます。範囲は 50m から 10km まで切り替えられます。</p>
+                </div>
+                <div>
+                    <h3 className="mb-1 font-semibold text-white/85">ご注意</h3>
+                    <ul className="list-disc space-y-1 pl-4">
+                        <li>実際の眺めを保証するものではありません。現地で安全と立入の可否を確認してください。</li>
+                        <li>濃い色同士は一定以上で同じ色になり、高い場所どうしの優劣は比べられません。</li>
+                        <li>5km 以上の遠方は、粗い情報から読み取っています。</li>
+                    </ul>
+                </div>
+            </div>
+        </details>
+    );
 }
 
 function ModeThumbnail({ mode, selected, onSelect }: { mode: (typeof MODES)[number]; selected: boolean; onSelect: () => void }) {
@@ -119,6 +155,8 @@ export function MapModesModal({
                     <div className="mt-2 h-2 rounded-full bg-[linear-gradient(to_right,rgba(20,18,30,0.16),rgba(38,25,74,0.35),rgba(86,35,102,0.55),rgba(190,75,70,0.78),rgba(255,166,0,0.92),rgba(255,239,120,1))]" />
                     <div className="mt-1 flex justify-between text-[10px] text-white/35"><span>低い</span><span>高い</span></div>
                 </div>
+
+                <PotentialExplainer />
 
                 <p className="mt-4 text-[10px] leading-relaxed text-white/40">© OpenStreetMap contributors · © CARTO · 国土地理院</p>
             </section>

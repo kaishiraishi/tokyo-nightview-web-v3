@@ -182,9 +182,9 @@ export function CompassMode({
         : error && !data && !isLoading ? error : statusMessage(status, isSupported, error);
 
     return (
-        // 分割表示の片側（縦長は上半分、横長は左半分）。もう片側は地図（PotentialMapView 側で配置）
-        <div className="flex h-full flex-col overflow-hidden bg-[#06080c] text-white">
-            <header className="flex shrink-0 items-center justify-between gap-3 pb-1 pl-[max(1rem,env(safe-area-inset-left))] pr-4 pt-[calc(10px+env(safe-area-inset-top))]">
+        // 地図の上に浮かべるカード（位置と大きさは PotentialMapView 側）。地図は全面のまま、カードの外側から透けて見える
+        <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-white/15 bg-black/60 text-white shadow-[0_16px_48px_rgba(0,0,0,0.55)] backdrop-blur-md">
+            <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-1 pt-3">
                 <div className="min-w-0">
                     <h2 className="text-sm font-semibold">コンパスモード</h2>
                     {status === 'off' && isSupported ? (
