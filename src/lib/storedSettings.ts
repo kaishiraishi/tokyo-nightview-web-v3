@@ -21,7 +21,7 @@ function writeStoredFlag(key: string, enabled: boolean): boolean {
 }
 
 // デバッグ用の表示（Street View リンクなど）。既定は OFF。
-export const readStoredDebugMode = () => readStoredFlag(DEBUG_MODE_STORAGE_KEY, false);
+export const readStoredDebugMode = () => readStoredFlag(DEBUG_MODE_STORAGE_KEY, true);
 export const writeStoredDebugMode = (enabled: boolean) => writeStoredFlag(DEBUG_MODE_STORAGE_KEY, enabled);
 
 // PLATEAU の 3D 建物。初回（保存値なし）は PC だけ ON。スマホは通信と GPU の負荷を抑えるため OFF にし、
