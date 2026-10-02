@@ -73,7 +73,7 @@
 - 探索 / 投稿の切替は `MapModeToggle`（地図アイコン = 探索、紫のスパークル = 投稿）。`aria-pressed` で現在の mode を示す。メニューの「投稿」行も投稿モードへ切り替える。
 - 地図のポテンシャル表示は「絞って探す」（閾値 0.006）に固定。
 - PLATEAU の 3D 建物（`useMapLibre` の `plateau-bldg-extrusion`、第三者がホスティングしている MVT `ysk766.github.io/plateau_tokyo_2023_mvt_lod1`）は、メニュー → 設定 の「3D 建物」スイッチでオン/オフする（`nightview.buildings3d`、既定 ON）。このタイルは tippecanoe の `--drop-densest-as-needed` で密集地の建物が間引かれていて、西新宿の高層ビル街などが欠ける。自前での再生成は検討中
-- 探索モードのシート（モバイルは下部、PC は左パネル）は検索欄だけ（2026-10-02 に方向・距離カードの中身を撤去）。方向・距離の分析はミニコンパス → コンパスモードで見る。選択地点があり、かつデバッグモードのときだけ Street View リンクをシートに出す。検索結果を選ぶと、モバイルではシートを閉じる。以前の 4 種類（classicField / classicPolar / field / polar、`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`）は主画面から呼ばれていない。設定の `PanelViewSelector`（`nightview.panelView`）は残っているが、今は表示に影響しない。メニュー・設定画面はトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）
+- 探索モードのシート（モバイルは下部、PC は左パネル）は検索欄だけ（2026-10-02 に方向・距離カードの中身を撤去）。方向・距離の分析はミニコンパス → コンパスモードで見る。地図タップによる地点選択（紫のピン）はデバッグモードのときだけ有効で、オフでは現在地が中心（オフにすると選択地点も消える）。選択地点があり、かつデバッグモードのときだけ Street View リンクをシートに出す。検索結果を選ぶと、モバイルではシートを閉じる。以前の 4 種類（classicField / classicPolar / field / polar、`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`）は主画面から呼ばれていない。設定の `PanelViewSelector`（`nightview.panelView`）は残っているが、今は表示に影響しない。メニュー・設定画面はトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）
 - 選択地点からは Google Maps Street View を別タブで開くリンクだけを出す。このリンクはデバッグモード時のみ表示し、デバッグモードは メニュー → 設定 のスイッチで切り替える（`localStorage` の `nightview.debugMode`、既定 OFF、`src/lib/storedSettings.ts`）（規約上、Google 画像・API を MapLibre 画面に埋め込まない。Maps Platform ToS §3.2.3(e)）。
 - 探索モードでは旧 V2 の ScanControlPanel / 旧探索用 deck.gl UI は使わない。投稿モードでは明示許可された既存 `MapViewExplore` の投稿 UI だけを表示する。
 

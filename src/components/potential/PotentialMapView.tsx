@@ -133,8 +133,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     }, []);
 
     useEffect(() => {
+        // 地図クリックによる地点選択（ピン）はデバッグモード専用。通常は現在地だけを中心にする。
         // 投稿モードでは地図クリックを投稿のピン選択に使うので、地点選択はしない
-        if (!map || !isLoaded || isPostMode) return;
+        if (!map || !isLoaded || isPostMode || !debugMode) return;
 
         const handleMapClick = (event: maplibregl.MapMouseEvent) => {
             setSelectedLocation({ lng: event.lngLat.lng, lat: event.lngLat.lat });
@@ -144,7 +145,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         return () => {
             map.off('click', handleMapClick);
         };
-    }, [isLoaded, isPostMode, map]);
+    }, [debugMode, isLoaded, isPostMode, map]);
 
     useEffect(() => {
         if (!map || !isLoaded) return;
@@ -296,6 +297,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
 
     const handleDebugModeChange = useCallback((enabled: boolean) => {
         setDebugMode(writeStoredDebugMode(enabled));
+        // ピンはデバッグモード専用なので、オフにしたら選択地点も消す（コンパスは現在地に戻る）
+        if (!enabled) setSelectedLocation(null);
     }, []);
 
     const handleBuildingsEnabledChange = useCallback((enabled: boolean) => {

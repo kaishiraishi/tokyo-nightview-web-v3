@@ -250,7 +250,7 @@ export function AppMenu({
                 {hasDebugModeSetting && (
                   <SettingSwitch
                     title="デバッグモード"
-                    description="選択地点の Google ストリートビューへのリンクなど、開発用の表示を出します。"
+                    description="地図をタップしてピンを立て、その地点を調べられます（ストリートビューへのリンクも出ます）。オフでは現在地が中心です。"
                     checked={debugMode}
                     onChange={onDebugModeChange}
                   />
