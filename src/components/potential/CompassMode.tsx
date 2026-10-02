@@ -189,7 +189,7 @@ export function CompassMode({
         <div className={`flex h-full flex-col overflow-hidden rounded-[28px] ${glassSurface} text-white`}>
             <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-1 pt-3">
                 <div className="min-w-0">
-                    <h2 className="text-base font-semibold tracking-wide">コンパスモード</h2>
+                    <h2 className="sr-only">コンパスモード</h2>
                     {/* 読み取り値は同じ位置に重ね、出し入れでヘッダーの高さ（文字盤の大きさ）が変わらないようにする */}
                     <div className="relative">
                         <div className={hovered ? 'invisible' : ''}>
