@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { UserRound } from 'lucide-react';
+import { UserRound } from '../ui/icons';
 import { sampleField } from './field';
 import { DirectionalFieldCanvas } from './DirectionalFieldCanvas';
 import type { DirectionalPalette, DirectionPeak, SelectedDirection } from './types';
@@ -7,6 +7,7 @@ import type { DirectionalPalette, DirectionPeak, SelectedDirection } from './typ
 export type DirectionalFieldProps = {
     peaks: DirectionPeak[];
     size?: number;
+    rotation?: number;
     palette?: DirectionalPalette;
     showForward?: boolean;
     interactive?: boolean;
@@ -17,6 +18,7 @@ export type DirectionalFieldProps = {
 export function DirectionalField({
     peaks,
     size = 320,
+    rotation = 0,
     palette = 'opportunity',
     showForward = true,
     interactive = true,
@@ -30,6 +32,7 @@ export function DirectionalField({
         <div className={`relative grid place-items-center overflow-visible rounded-3xl bg-[#080c10] ${className}`} style={{ width: size, height: size }}>
             <DirectionalFieldCanvas
                 size={size}
+                rotation={rotation}
                 samples={samples}
                 palette={palette}
                 showForward={showForward}

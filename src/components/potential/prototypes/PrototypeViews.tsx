@@ -8,12 +8,12 @@ export const PROTOTYPE_META: Record<PrototypeType, { title: string; caption: str
     polar: { title: 'Polar Heatmap', caption: '方向 × 距離 × 強度' },
 };
 
-export function PrototypeView({ type, data }: { type: PrototypeType; data: PotentialViewModel }) {
+export function PrototypeView({ type, data, rotation = 0, showCompassLabels = true }: { type: PrototypeType; data: PotentialViewModel; rotation?: number; showCompassLabels?: boolean }) {
     switch (type) {
         case 'field':
-            return <DirectionalFieldView data={data} />;
+            return <DirectionalFieldView data={data} rotation={rotation} />;
         case 'polar':
-            return <PolarHeatmapView data={data} />;
+            return <PolarHeatmapView data={data} rotation={rotation} showCompassLabels={showCompassLabels} />;
     }
 }
 

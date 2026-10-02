@@ -1,9 +1,10 @@
-import { Search, Sparkles, User } from 'lucide-react';
+import { Search, Sparkles, User } from '../ui/icons';
 import { useState } from 'react';
 import type { GeocodingResult } from '../../lib/api/geocodingApi';
 import type { PanelView } from '../potential/PanelViewSelector';
 import { AppMenu } from '../menu/AppMenu';
 import type { FanConfig } from '../map/types';
+import { SearchField } from './SearchField';
 
 // Mock stats for the profile menu
 const MOCK_PROFILE_STATS = {
@@ -34,10 +35,14 @@ type TopBarProps = {
     postCount?: number;
     panelView?: PanelView;
     onPanelViewChange?: (panelView: PanelView) => void;
+    debugMode?: boolean;
+    onDebugModeChange?: (enabled: boolean) => void;
+    hideSearch?: boolean;
 };
 
 export function TopBar({
     mode,
+    onModeChange,
     searchQuery,
     onSearchChange,
     onSearchSubmit,
@@ -55,6 +60,9 @@ export function TopBar({
     postCount = 0,
     panelView,
     onPanelViewChange,
+    debugMode,
+    onDebugModeChange,
+    hideSearch = false,
 }: TopBarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -63,7 +71,9 @@ export function TopBar({
             {/* Search & Mode Container - Floating Island */}
             <div className="flex items-center gap-2 pointer-events-auto">
                 <button
+                    type="button"
                     onClick={() => setIsMenuOpen(true)}
+                    aria-label="メニューを開く"
                     className={`
                         h-12 w-12 shrink-0 flex items-center justify-center rounded-full border border-white/10 shadow-lg backdrop-blur-md transition-all
                         ${isMenuOpen ? 'bg-white text-black' : 'bg-black/60 text-white/80 hover:bg-black/80 hover:text-white'}
@@ -73,63 +83,42 @@ export function TopBar({
                     <User className="h-5 w-5" />
                 </button>
 
-                {/* Search Bar */}
-                <div className="relative flex-1 group">
-                    <div className="flex h-12 w-full items-center gap-3 rounded-full border border-white/10 bg-black/60 px-4 shadow-lg backdrop-blur-md transition-all group-focus-within:bg-black/80 group-focus-within:border-white/20">
-                        <Search className="h-5 w-5 text-white/50" />
-                        <input
-                            className="h-full w-full bg-transparent text-sm text-white placeholder-white/50 outline-none"
-                            placeholder="場所を検索..."
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => onSearchChange(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && onSearchSubmit()}
-                            onFocus={onFocusSearch}
-                        />
-                        {isSearching && (
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-                        )}
-                    </div>
+                {!hideSearch && (
+                    <SearchField
+                        searchQuery={searchQuery}
+                        onSearchChange={onSearchChange}
+                        onSearchSubmit={onSearchSubmit}
+                        isSearching={isSearching}
+                        searchResults={searchResults}
+                        showResults={showResults}
+                        onSelectResult={onSelectResult}
+                        onCloseResults={onCloseResults}
+                        onFocusSearch={onFocusSearch}
+                    />
+                )}
 
-                    {/* Search Results Dropdown */}
-                    {showResults && searchResults.length > 0 && (
-                        <div
-                            className="absolute left-0 right-0 top-14 overflow-hidden rounded-2xl border border-white/10 bg-black/90 shadow-2xl backdrop-blur-md z-[6000]"
-                            onMouseLeave={onCloseResults}
-                        >
-                            <div className="max-h-[60vh] overflow-y-auto py-2">
-                                {searchResults.map((result, index) => {
-                                    const parts = result.displayName.split(',');
-                                    const name = parts[0];
-                                    const address = parts.slice(1).join(', ').trim();
-
-                                    return (
-                                        <button
-                                            key={index}
-                                            type="button"
-                                            onClick={() => onSelectResult(result)}
-                                            className="w-full px-4 py-3 text-left transition-colors hover:bg-white/10 flex flex-col gap-0.5"
-                                        >
-                                            <span className="text-sm font-semibold text-white">{name}</span>
-                                            {address && (
-                                                <span className="text-xs text-white/50 line-clamp-1">{address}</span>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Context indicator (same capsule position as v2's mode switch) */}
-                <div className="flex bg-black/60 backdrop-blur-md rounded-full p-1 border border-white/10 shadow-lg h-12 items-center">
-                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-white text-black shadow-sm" title="地図表示">
-                        <Search className="h-5 w-5" />
-                    </div>
-                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-violet-700 text-white shadow-sm" title="夜景ポテンシャル">
-                        <Sparkles className="h-5 w-5" />
-                    </div>
+                {/* Mode Toggle (Capsule) */}
+                <div className="flex items-center rounded-full border border-white/10 bg-black/60 p-1 shadow-lg backdrop-blur-md">
+                    <button
+                        type="button"
+                        onClick={() => onModeChange('explore')}
+                        aria-label="探索モード"
+                        aria-pressed={mode === 'explore'}
+                        className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${mode === 'explore' ? 'bg-white text-black shadow-sm' : 'text-white/70 hover:text-white'}`}
+                        title="探索モード"
+                    >
+                        <Search className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onModeChange('analyze')}
+                        aria-label="投稿モード"
+                        aria-pressed={mode === 'analyze'}
+                        className={`flex h-10 w-10 items-center justify-center rounded-full transition-all ${mode === 'analyze' ? 'bg-violet-700 text-white shadow-sm' : 'text-white/70 hover:text-white'}`}
+                        title="投稿モード"
+                    >
+                        <Sparkles className="h-5 w-5" aria-hidden="true" />
+                    </button>
                 </div>
             </div>
 
@@ -181,6 +170,8 @@ export function TopBar({
                 onFanConfigChange={onFanConfigChange}
                 panelView={panelView}
                 onPanelViewChange={onPanelViewChange}
+                debugMode={debugMode}
+                onDebugModeChange={onDebugModeChange}
             />
         </div>
     );

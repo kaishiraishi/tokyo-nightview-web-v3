@@ -1,6 +1,6 @@
 # AI Working Rules
 
-このファイルは Codex / Claude Code 共通の作業ルール。プロジェクトの事実は `PROJECT.md`、現在地は `STATE.md` に書く。
+このファイルは Claude Code の作業ルール（正本）。Claude Code が調査・実装・デバッグ・テスト・レビュー・`STATE.md` 更新まで直接行う。外部 CLI worker や AI 間の中間ファイルによる受け渡しは使わない。プロジェクトの事実は `PROJECT.md`、現在地は `STATE.md` に書く。
 
 ## Before starting
 
@@ -17,9 +17,24 @@
 - Follow existing style and naming. Prefer immutable updates, no `any`, keep files small (aim 200–400 lines, max 800). Comments explain why.
 - Never swallow errors; handle null / async / boundary cases explicitly.
 - Prefer the simplest correct implementation; avoid new dependencies.
-- Delegate implementation and investigation to Luna (codex CLI) via files: write `tasks/NNN-<slug>.prompt.md`, run `scripts/luna.sh NNN-<slug> [read|write|net]` in the background, read `tasks/NNN-<slug>.result.md`. Independent tasks run in parallel. See `tasks/README.md`.
-- Never trust a Luna report as-is: read `git diff` and re-run `./scripts/verify.sh` before accepting.
-- Trivial lookups that need no record can use a Claude subagent (Explore); do single-file edits directly.
+
+## Model selection
+
+- Sonnet（既定）: 調査、実装、バグ修正、デバッグ、通常の設計判断、diff 確認、レビュー。画像の読み取りも必ず Sonnet。
+- Haiku: 軽量・独立・検証しやすい補助 subagent だけ（ファイル探索、要約・分類・抽出、read-only の限定調査）。設計判断・複雑な実装・最終受け入れ判定は任せない。
+- Opus: 難しい architecture 判断、複数領域をまたぐ問題、曖昧・矛盾した仕様、原因特定が難しい問題、高リスク判断への escalation だけ。effort は medium から。
+
+## Subagent policy
+
+- 独立していて作業量があり、並列化の意味があるときだけ使う。数回の tool call で済む作業やダブルチェック目的では起動しない。
+- 軽量調査は Haiku、実装・複雑な調査・画像理解は Sonnet。Opus の subagent は原則使わない。
+- ネストしない（深さ 1）。同時実行は 2〜3 まで。
+- subagent の報告は「やろうとしたこと」。`git diff` と `./scripts/verify.sh` で裏を取ってから採用する。
+
+## External-write safety
+
+- git push、deploy、LaunchAgent の操作など外部への書き込みは、人の明示的な承認を得てから行う。本番向けの `--apply` 系操作は人が実行する。
+- 書き込みの前に dry-run / read-only で確認する。
 
 ## Verification
 

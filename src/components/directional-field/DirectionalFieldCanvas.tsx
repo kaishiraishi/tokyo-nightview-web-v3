@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { colorForValue } from './colors';
 import { normalizeAngle } from './field';
+import { drawCompassLabels, rotateCompassCanvas } from '../potential/compassCanvas';
 import type { DirectionalPalette, FieldSample, SelectedDirection } from './types';
 
 type DirectionalFieldCanvasProps = {
     size: number;
+    rotation: number;
     samples: FieldSample[];
     palette: DirectionalPalette;
     showForward: boolean;
@@ -35,6 +37,7 @@ function drawRingSegment(
 
 export function DirectionalFieldCanvas({
     size,
+    rotation,
     samples,
     palette,
     showForward,
@@ -88,6 +91,9 @@ export function DirectionalFieldCanvas({
             context.fillStyle = background;
             context.fillRect(0, 0, size, size);
 
+            context.save();
+            rotateCompassCanvas(context, center, rotation);
+
             context.beginPath();
             context.arc(center, center, innerRadius + baseThickness / 2, 0, Math.PI * 2);
             context.strokeStyle = 'rgba(255, 255, 255, 0.1)';
@@ -125,6 +131,9 @@ export function DirectionalFieldCanvas({
                 }
             });
 
+            drawCompassLabels(context, center, radius + size * 0.08, Math.max(9, size * 0.035));
+            context.restore();
+
             if (showForward) {
                 context.strokeStyle = 'rgba(255, 255, 255, 0.32)';
                 context.lineWidth = 1;
@@ -143,13 +152,14 @@ export function DirectionalFieldCanvas({
         return () => {
             if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
         };
-    }, [palette, showForward, size, targetValues]);
+    }, [palette, rotation, showForward, size, targetValues]);
 
     const directionFromPointer = (event: React.PointerEvent<HTMLCanvasElement>): SelectedDirection => {
         const bounds = event.currentTarget.getBoundingClientRect();
         const x = event.clientX - bounds.left - bounds.width / 2;
         const y = event.clientY - bounds.top - bounds.height / 2;
-        const angle = normalizeAngle((Math.atan2(y, x) * 180) / Math.PI + 90);
+        const screenAngle = normalizeAngle((Math.atan2(y, x) * 180) / Math.PI + 90);
+        const angle = normalizeAngle(screenAngle + rotation);
         const index = Math.round(angle) % 360;
         return { angle, strength: samples[index]?.value ?? 0 };
     };

@@ -2,10 +2,12 @@ import { useEffect, useRef } from 'react';
 import type { PointerEvent } from 'react';
 import { colorForStrength } from './colors';
 import { normalizeAngle } from './field';
+import { drawCompassLabels, rotateCompassCanvas } from '../potential/compassCanvas';
 import type { PolarPalette, PolarSample } from './types';
 
 type PolarHeatmapCanvasProps = {
     size: number;
+    rotation: number;
     samples: PolarSample[];
     maxDistance: number;
     palette: PolarPalette;
@@ -16,6 +18,7 @@ type PolarHeatmapCanvasProps = {
 
 export function PolarHeatmapCanvas({
     size,
+    rotation,
     samples,
     maxDistance,
     palette,
@@ -70,6 +73,9 @@ export function PolarHeatmapCanvas({
             context.fillStyle = background;
             context.fillRect(0, 0, size, size);
 
+            context.save();
+            rotateCompassCanvas(context, center, rotation);
+
             for (let radialIndex = 0; radialIndex < radialResolution; radialIndex += 1) {
                 const inner = innerRadius + ((radius - innerRadius) * radialIndex) / radialResolution;
                 const outer = innerRadius + ((radius - innerRadius) * (radialIndex + 1)) / radialResolution;
@@ -118,6 +124,9 @@ export function PolarHeatmapCanvas({
             context.strokeStyle = 'rgba(255, 255, 255, 0.24)';
             context.stroke();
 
+            drawCompassLabels(context, center, radius + size * 0.07, Math.max(9, size * 0.03));
+            context.restore();
+
             if (!settled) animationFrameRef.current = requestAnimationFrame(drawFrame);
         };
 
@@ -127,7 +136,7 @@ export function PolarHeatmapCanvas({
         return () => {
             if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current);
         };
-    }, [maxDistance, palette, samples, showGrid, size]);
+    }, [maxDistance, palette, rotation, samples, showGrid, size]);
 
     const valueFromPointer = (event: PointerEvent<HTMLCanvasElement>) => {
         const bounds = event.currentTarget.getBoundingClientRect();
@@ -136,7 +145,8 @@ export function PolarHeatmapCanvas({
         const pixelDistance = Math.sqrt(dx * dx + dy * dy);
         const radius = bounds.width * (150 / 360);
         const normalizedDistance = Math.max(0, Math.min(1, pixelDistance / radius));
-        const angle = normalizeAngle((Math.atan2(dy, dx) * 180) / Math.PI + 90);
+        const screenAngle = normalizeAngle((Math.atan2(dy, dx) * 180) / Math.PI + 90);
+        const angle = normalizeAngle(screenAngle + rotation);
         const angularIndex = Math.min(179, Math.floor((angle / 360) * 180));
         const radialIndex = Math.min(71, Math.floor(normalizedDistance * 72));
         const sample = samples[radialIndex * 180 + angularIndex];

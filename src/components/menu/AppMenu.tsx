@@ -10,7 +10,7 @@ import {
   Mail,
   User,
   ChevronLeft,
-} from 'lucide-react';
+} from '../ui/icons';
 import { type ReactNode, useState } from 'react';
 import type { FanConfig } from '../map/types';
 import { PanelViewSelector, type PanelView } from '../potential/PanelViewSelector';
@@ -29,6 +29,8 @@ type AppMenuProps = {
   onFanConfigChange?: (config: FanConfig) => void;
   panelView?: PanelView;
   onPanelViewChange?: (panelView: PanelView) => void;
+  debugMode?: boolean;
+  onDebugModeChange?: (enabled: boolean) => void;
 };
 
 export function AppMenu({
@@ -44,6 +46,8 @@ export function AppMenu({
   onFanConfigChange,
   panelView,
   onPanelViewChange,
+  debugMode,
+  onDebugModeChange,
 }: AppMenuProps) {
   const [activeView, setActiveView] = useState<'main' | 'settings'>('main');
 
@@ -51,6 +55,7 @@ export function AppMenu({
 
   const hasPanelViewSetting = panelView !== undefined && onPanelViewChange !== undefined;
   const hasFanConfigSetting = fanConfig !== undefined && onFanConfigChange !== undefined;
+  const hasDebugModeSetting = debugMode !== undefined && onDebugModeChange !== undefined;
 
   const handleClose = () => {
     setActiveView('main');
@@ -210,7 +215,34 @@ export function AppMenu({
                   </section>
                 )}
 
-                {!hasPanelViewSetting && !hasFanConfigSetting && (
+                {hasDebugModeSetting && (
+                  <section>
+                    <h3 className={`mb-3 px-2 text-sm font-semibold ${textPrimary}`}>デバッグモード</h3>
+                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 shadow-inner">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={debugMode}
+                        onClick={() => onDebugModeChange(!debugMode)}
+                        className="flex min-h-11 w-full items-center justify-between gap-4 px-1 text-left"
+                      >
+                        <span className={`text-xs leading-relaxed ${textMuted}`}>
+                          選択地点の Google ストリートビューへのリンクなど、開発用の表示を出します。
+                        </span>
+                        <span
+                          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${debugMode ? 'bg-violet-700' : 'bg-white/15'}`}
+                          aria-hidden="true"
+                        >
+                          <span
+                            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${debugMode ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
+                          />
+                        </span>
+                      </button>
+                    </div>
+                  </section>
+                )}
+
+                {!hasPanelViewSetting && !hasFanConfigSetting && !hasDebugModeSetting && (
                   <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
                     <div className={`text-sm font-semibold ${textPrimary}`}>夜景ポテンシャルマップ</div>
                     <p className={`mt-2 text-xs leading-relaxed ${textMuted}`}>

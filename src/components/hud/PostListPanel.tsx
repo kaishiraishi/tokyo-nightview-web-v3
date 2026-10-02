@@ -1,31 +1,13 @@
 import type { Post } from '../../lib/postsApi';
-import { LayerSettings } from '../layout/LayerSettings';
-import { Inbox, Image as ImageIcon, MapPin } from 'lucide-react';
+import { Inbox, Image as ImageIcon, MapPin } from '../ui/icons';
 
 type PostListPanelProps = {
     posts: Post[];
     isLoading?: boolean;
     onPostClick: (post: Post) => void;
-    // Layer settings props
-    viirsEnabled: boolean;
-    setViirsEnabled: (enabled: boolean) => void;
-    potentialEnabled: boolean;
-    setPotentialEnabled: (enabled: boolean) => void;
-    aerialEnabled: boolean;
-    setAerialEnabled: (enabled: boolean) => void;
 };
 
-export function PostListPanel({ 
-    posts, 
-    isLoading, 
-    onPostClick,
-    viirsEnabled,
-    setViirsEnabled,
-    potentialEnabled,
-    setPotentialEnabled,
-    aerialEnabled,
-    setAerialEnabled
-}: PostListPanelProps) {
+export function PostListPanel({ posts, isLoading, onPostClick }: PostListPanelProps) {
     if (isLoading) {
         return <div className="p-8 text-center text-white/50 text-sm">読み込み中...</div>;
     }
@@ -49,16 +31,6 @@ export function PostListPanel({
                 <div className="text-xs text-white/40">{posts.length}件</div>
             </div>
 
-            {/* Layer Settings Section */}
-            <LayerSettings
-                viirsEnabled={viirsEnabled}
-                setViirsEnabled={setViirsEnabled}
-                potentialEnabled={potentialEnabled}
-                setPotentialEnabled={setPotentialEnabled}
-                aerialEnabled={aerialEnabled}
-                setAerialEnabled={setAerialEnabled}
-            />
-            
             <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {posts.map((post) => (
                     <div 

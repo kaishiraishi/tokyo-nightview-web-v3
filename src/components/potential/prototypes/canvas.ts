@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react';
+import { drawCompassLabels as drawSharedCompassLabels } from '../compassCanvas';
 
 // 全 Prototype 共通の論理キャンバスサイズ。表示は CSS で縮小する。
 export const CANVAS_SIZE = 300;
 export const CANVAS_BACKGROUND = '#080b10';
 export const CENTER = CANVAS_SIZE / 2;
-
-const COMPASS_LABELS = ['N', 'E', 'S', 'W'];
 
 export function bearingToRadians(bearing: number) {
     return ((bearing - 90) * Math.PI) / 180;
@@ -25,7 +24,8 @@ export function formatDistance(distance: number) {
     return distance >= 1000 ? `${distance / 1000} km` : `${Math.round(distance)} m`;
 }
 
-export function useDrawCanvas(draw: (context: CanvasRenderingContext2D) => void, deps: unknown[]) {
+// transparent: 地図の上に直接重ねる表示（ミニコンパス）では背景を塗らない
+export function useDrawCanvas(draw: (context: CanvasRenderingContext2D) => void, deps: unknown[], { transparent = false }: { transparent?: boolean } = {}) {
     const ref = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -37,11 +37,13 @@ export function useDrawCanvas(draw: (context: CanvasRenderingContext2D) => void,
         canvas.height = CANVAS_SIZE * ratio;
         context.setTransform(ratio, 0, 0, ratio, 0, 0);
         context.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        context.fillStyle = CANVAS_BACKGROUND;
-        context.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        if (!transparent) {
+            context.fillStyle = CANVAS_BACKGROUND;
+            context.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        }
         draw(context);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, deps);
+    }, [...deps, transparent]);
 
     return ref;
 }
@@ -60,16 +62,7 @@ export function annularSector(
 }
 
 export function drawCompassLabels(context: CanvasRenderingContext2D, radius: number) {
-    context.save();
-    context.font = '600 15px system-ui, sans-serif';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillStyle = 'rgba(255,255,255,0.55)';
-    COMPASS_LABELS.forEach((label, index) => {
-        const { x, y } = polarToXY(index * 90, radius);
-        context.fillText(label, x, y);
-    });
-    context.restore();
+    drawSharedCompassLabels(context, CENTER, radius, 15);
 }
 
 export function drawCenterMarker(context: CanvasRenderingContext2D) {

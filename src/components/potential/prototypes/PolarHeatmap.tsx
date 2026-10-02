@@ -1,18 +1,20 @@
 import { useState, type PointerEvent } from 'react';
 import { potentialColorCss } from './colorScale';
-import { annularSector, CANVAS_SIZE, CENTER, compassName, drawCenterMarker, drawCompassLabels, formatDistance, useDrawCanvas } from './canvas';
+import { annularSector, CANVAS_SIZE, CENTER, compassName, drawCenterMarker, formatDistance, useDrawCanvas } from './canvas';
+import { drawCompassLabels, rotateCompassCanvas } from '../compassCanvas';
 import type { PolarCell, PotentialViewModel } from './types';
 
 const INNER_RADIUS = 14;
 const OUTER_RADIUS = 122;
 
-export function PolarHeatmapView({ data }: { data: PotentialViewModel }) {
+export function PolarHeatmapView({ data, rotation = 0, showCompassLabels = true }: { data: PotentialViewModel; rotation?: number; showCompassLabels?: boolean }) {
     const [hovered, setHovered] = useState<PolarCell | null>(null);
     const { bearingCount, distanceCount, cells } = data.polarField;
 
     const ref = useDrawCanvas((context) => {
         const stepBearing = 360 / bearingCount;
         const ringWidth = (OUTER_RADIUS - INNER_RADIUS) / distanceCount;
+        const ratio = context.getTransform().a || 1;
 
         // セルは (フィルタなしで) オフスクリーンに描き、ぼかしは 1 回の drawImage だけに掛ける
         const layer = document.createElement('canvas');
@@ -20,7 +22,7 @@ export function PolarHeatmapView({ data }: { data: PotentialViewModel }) {
         layer.height = context.canvas.height;
         const layerContext = layer.getContext('2d');
         if (!layerContext) return;
-        layerContext.setTransform(context.getTransform());
+        layerContext.setTransform(ratio, 0, 0, ratio, 0, 0);
         cells.forEach((cell, index) => {
             const inner = INNER_RADIUS + (index % distanceCount) * ringWidth;
             annularSector(layerContext, inner, inner + ringWidth + 0.4, cell.bearing - stepBearing / 2, cell.bearing + stepBearing / 2 + 0.3);
@@ -29,15 +31,17 @@ export function PolarHeatmapView({ data }: { data: PotentialViewModel }) {
         });
 
         context.save();
+        rotateCompassCanvas(context, CENTER, rotation);
         context.beginPath();
         context.arc(CENTER, CENTER, OUTER_RADIUS + 1, 0, Math.PI * 2);
         context.clip();
         // 表示補間: 実測は 24 方向 × 9 距離。境界は弱いぼかしに留める
         context.filter = 'blur(1.5px)';
-        context.setTransform(1, 0, 0, 1, 0, 0);
-        context.drawImage(layer, 0, 0);
+        context.drawImage(layer, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
         context.restore();
 
+        context.save();
+        rotateCompassCanvas(context, CENTER, rotation);
         // 距離ガイド (range/4, range/2, range)
         context.font = '11px system-ui, sans-serif';
         context.textAlign = 'left';
@@ -54,8 +58,9 @@ export function PolarHeatmapView({ data }: { data: PotentialViewModel }) {
         }
 
         drawCenterMarker(context);
-        drawCompassLabels(context, CANVAS_SIZE / 2 - 12);
-    }, [cells, data.range]);
+        if (showCompassLabels) drawCompassLabels(context, CENTER, CANVAS_SIZE / 2 - 12, 14);
+        context.restore();
+    }, [cells, data.range, rotation, showCompassLabels]);
 
     const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
         const rect = event.currentTarget.getBoundingClientRect();
@@ -66,7 +71,8 @@ export function PolarHeatmapView({ data }: { data: PotentialViewModel }) {
             setHovered(null);
             return;
         }
-        const bearing = (((Math.atan2(y, x) * 180) / Math.PI + 90) % 360 + 360) % 360;
+        const screenBearing = (((Math.atan2(y, x) * 180) / Math.PI + 90) % 360 + 360) % 360;
+        const bearing = (screenBearing + rotation) % 360;
         const bearingIndex = Math.round(bearing / (360 / bearingCount)) % bearingCount;
         const distanceIndex = Math.min(distanceCount - 1, Math.floor(((radius - INNER_RADIUS) / (OUTER_RADIUS - INNER_RADIUS)) * distanceCount));
         setHovered(cells[bearingIndex * distanceCount + distanceIndex] ?? null);

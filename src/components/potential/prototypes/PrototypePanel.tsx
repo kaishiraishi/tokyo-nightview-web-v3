@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CompassControl, type CompassControlProps } from '../CompassControl';
 import { PrototypeCard } from './PrototypeCard';
 import { PROTOTYPE_META, PrototypeView, prototypeSubtitle } from './PrototypeViews';
 import { POTENTIAL_RANGES, type PotentialRange, type PotentialViewModel, type PrototypeType } from './types';
@@ -12,6 +13,8 @@ type PrototypePanelProps = {
     hasSelection: boolean;
     status: ReactNode;
     error: string | null;
+    rotation: number;
+    compass: CompassControlProps;
     children?: ReactNode;
 };
 
@@ -38,15 +41,16 @@ export function PrototypeControls({
     );
 }
 
-export function PrototypePanel({ data, type, isUpdating, hasSelection, status, error, children, ...controls }: PrototypePanelProps) {
+export function PrototypePanel({ data, type, isUpdating, hasSelection, status, error, rotation, compass, children, ...controls }: PrototypePanelProps) {
     return (
         <div className="space-y-3">
             <PrototypeControls {...controls} />
+            <CompassControl {...compass} />
             <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-center text-[11px] text-white/45">{status}</div>
             {error && <p className="text-center text-[11px] text-amber-200/80">{error}</p>}
             {data ? (
                 <PrototypeCard title={PROTOTYPE_META[type].title} subtitle={prototypeSubtitle(type, data)} isUpdating={isUpdating}>
-                    <PrototypeView type={type} data={data} />
+                    <PrototypeView type={type} data={data} rotation={rotation} />
                 </PrototypeCard>
             ) : (
                 <div className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/10 text-xs text-white/40">

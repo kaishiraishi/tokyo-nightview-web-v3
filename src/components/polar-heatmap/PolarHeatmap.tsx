@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { UserRound } from 'lucide-react';
+import { UserRound } from '../ui/icons';
 import { samplePolarField } from './field';
 import { PolarHeatmapCanvas } from './PolarHeatmapCanvas';
 import type { PolarPalette, PolarPoint } from './types';
@@ -7,6 +7,7 @@ import type { PolarPalette, PolarPoint } from './types';
 type PolarHeatmapProps = {
     points: PolarPoint[];
     size?: number;
+    rotation?: number;
     maxDistance: number;
     palette?: PolarPalette;
     showGrid?: boolean;
@@ -22,6 +23,7 @@ function formatDistance(distance: number) {
 export function PolarHeatmap({
     points,
     size = 360,
+    rotation = 0,
     maxDistance,
     palette = 'thermal',
     showGrid = true,
@@ -36,6 +38,7 @@ export function PolarHeatmap({
         <div className={`relative grid place-items-center overflow-visible rounded-3xl bg-[#081019] ${className}`} style={{ width: size, height: size }}>
             <PolarHeatmapCanvas
                 size={size}
+                rotation={rotation}
                 samples={samples}
                 maxDistance={maxDistance}
                 palette={palette}

@@ -34,7 +34,7 @@
 ## Non-goals
 
 - 現段階で別の地図エンジンへ移行しない
-- 現段階で認証・投稿・プロフィールなどの旧 Explore/Analyze 系機能を、主画面の範囲へ無断で広げない
+- 現段階で認証・投稿・プロフィールなどの旧 Explore/Analyze 系機能を、主画面の範囲へ無断で広げない。ただし、ユーザーが明示的に許可した「既存投稿 UI のモード切替接続のみ」は例外とし、投稿 UI 自体・認証・データ・旧探索アルゴリズムは拡張しない
 - 現段階でポテンシャル値の算出方法を、根拠なく変更しない
 - 生データや生成済みタイルを、理由と再生成手順なしに置き換えない
 
@@ -51,25 +51,29 @@
 
 - Entry point: `src/App.tsx`
 - Active view: `src/components/potential/PotentialMapView.tsx`
+- `App` は `mode: 'explore' | 'analyze'` の単一状態を持ち、常に `PotentialMapView` を 1 つだけ描画する（mode 切替で地図は作り直さない）。`analyze`（投稿モード）では同じ地図の上に投稿をポップアップで重ね、左メニューを投稿一覧、右下に投稿ボタン（`PostComposer`）を出す。地図クリックの地点選択は投稿モード中は無効
+- 投稿の取得は `usePosts`、地図上の表示は `usePostPopups`。投稿モードに入るまで Supabase は呼ばない
 - Map and layer registration: `src/hooks/useMapLibre.ts`
 - Pixel sampling and polar data: `src/lib/potentialSampler.ts`
 - Potential tiles: `public/NightViewPotential_tiles/`（`.gitignore` 済み。Git には含めず `scripts/make-potential-tiles.sh` で再生成する）
 - Tile generation: `scripts/make-potential-tiles.sh`
 - Deployment base path: `vite.config.ts` の `/tokyo-nightview-web-v3/`
+- ローカル確認: `npm run dev` → `http://localhost:5173/tokyo-nightview-web-v3/`（末尾のベースパス必須。ポートが埋まっていれば Vite が表示する `Local:` の URL）。実機は `npm run dev -- --host` の `Network:` URL を同じ Wi-Fi から開く
 
-`src/components/map/MapViewExplore.tsx`、`MapViewAnalyze.tsx` などの旧画面・旧機能はリポジトリに残っているが、現在の `App.tsx` からは起動されていない。`tools/dsm-api`（`npm run dev:api` / `dev:all`）は `MapViewExplore.tsx` の `src/lib/api/dsmApi.ts` のみが使う旧機能専用のバックエンドであり、現行の `PotentialMapView` は使用しない。変更する場合は、主画面の変更なのか旧機能の再利用なのかを明示する。
+`src/components/map/MapViewExplore.tsx`、`MapViewAnalyze.tsx` などの旧画面・旧機能はリポジトリに残っている。`MapViewExplore.tsx` はどこからも起動されない（投稿モードは `PotentialMapView` に統合済み）。`tools/dsm-api`（`npm run dev:api` / `dev:all`）は `MapViewExplore.tsx` の `src/lib/api/dsmApi.ts` のみが使う旧探索専用のバックエンドで、現在は未接続。変更する場合は、主画面の変更なのか旧機能の再利用なのかを明示する。
 
-旧 Explore/Analyze 系コード（`MapViewExplore.tsx` 等と `tools/dsm-api`）を残すか削除するか再利用するかは、Non-goals により現段階では判断・着手しない。判断が必要になった時点で `PROJECT.md` の Non-goals を更新してから着手する。
+上記の「既存投稿 UI のモード切替接続のみ」の例外を除き、旧 Explore/Analyze 系コード（`MapViewExplore.tsx` 等と `tools/dsm-api`）を残すか削除するか再利用するかは、Non-goals により現段階では判断・着手しない。追加の再利用が必要になった時点で `PROJECT.md` の Non-goals を更新してから着手する。
 
 ## Current UI
 
-- レイアウト: `TopBar`（検索）、左の `LayerMenu`（PC はサイドパネル、モバイルは下部シート）、右下の現在地ボタン。ガラス調（`bg-black/60` + `backdrop-blur-md` + `border-white/10`）、基本テキストは `White/90`、補助は `White/50`。
+- レイアウト（探索・投稿共通、モバイル / PC 共通）: 左上にミニコンパス（`MiniCompass`。カード内の Directional Field（試作 `field`、`prototypes/DirectionalField.tsx` の `variant="mini"`）を 64px に縮小したもの。Figma 準拠で背景・枠なし、細いリングと外側の N/E/S/W 目盛り（N は赤）、方位文字と中心マーカーは省略。端末方位（なければ地図の bearing）で回転し、中央は Range。タップで全画面コンパス。投稿モードでは非表示）、右上に探索 / 投稿の切替ピル（`MapModeToggle`）、右下に現在地と Map Modes の縦ボタン列（`MapControlStack`）。検索とメニュー（設定）ボタンは `LayerMenu`（PC はサイドパネル、モバイルは下部シート）の上部。主画面では `TopBar` を使わない。ガラス調（`bg-black/60` + `backdrop-blur-md` + `border-white/10`）、基本テキストは `White/90`、補助は `White/50`。
 - 配色: 紫はネオンにせず落ち着いた灯りとして扱う。塗りは選択中・主ボタンに限り、淡い紫は枠・フォーカスに使う。青は航空写真などレイヤー状態だけ、赤はエラーと北方向だけ。
-- `LayerMenu` の内容: レイヤー ON/OFF（VIIRS / ポテンシャル / 航空写真）、不透明度、凡例、方向・距離パネル。
+- `LayerMenu` の内容: レイヤー ON/OFF（ポテンシャル / 航空写真。VIIRS 表示は廃止）、不透明度、凡例、方向・距離パネル。
+- 探索 / 投稿の切替は `MapModeToggle`（地図アイコン = 探索、紫のスパークル = 投稿）。`aria-pressed` で現在の mode を示す。メニューの「投稿」行も投稿モードへ切り替える。
 - 地図のポテンシャル表示は「絞って探す」（閾値 0.006）に固定。
 - 方向・距離パネルの表示は 4 種類「Field（従来）/ Polar（従来）/ Field（試作）/ Polar（試作）」で、カードには 1 つだけ出す。選択は メニュー → 設定 の `PanelViewSelector` で選ぶ（`localStorage` の `nightview.panelView` に保存）。メニュー・設定画面もトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）。`classicField` / `classicPolar` は従来の `DirectionalField` + `PolarHeatmap`、`field` / `polar` は `src/components/potential/prototypes/`（共通 ViewModel から描画、Range ボタンで全 View 同時更新）。
-- 選択地点からは Google Maps Street View を別タブで開くリンクだけを出す（規約上、Google 画像・API を MapLibre 画面に埋め込まない。Maps Platform ToS §3.2.3(e)）。
-- 旧 V2 の TopBar モード切替 / ScanControlPanel / deck.gl 系 UI は現行の主画面では使わない。
+- 選択地点からは Google Maps Street View を別タブで開くリンクだけを出す。このリンクはデバッグモード時のみ表示し、デバッグモードは メニュー → 設定 のスイッチで切り替える（`localStorage` の `nightview.debugMode`、既定 OFF、`src/lib/debugMode.ts`）（規約上、Google 画像・API を MapLibre 画面に埋め込まない。Maps Platform ToS §3.2.3(e)）。
+- 探索モードでは旧 V2 の ScanControlPanel / 旧探索用 deck.gl UI は使わない。投稿モードでは明示許可された既存 `MapViewExplore` の投稿 UI だけを表示する。
 
 ## Data pipeline
 

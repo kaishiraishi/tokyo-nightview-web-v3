@@ -1,4 +1,4 @@
-import { Layers } from 'lucide-react';
+import { Layers } from '../ui/icons';
 
 type LayerSettingsProps = {
     viirsEnabled: boolean;

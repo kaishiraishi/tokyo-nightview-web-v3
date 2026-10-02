@@ -2,7 +2,7 @@ import { ProfileChart } from '../../components/profile/ProfileChart';
 import type { ScanMode, ScanStep } from '../map/types';
 import type { RayResult, ProfileResponse } from '../../types/profile';
 import { LayerSettings } from '../layout/LayerSettings';
-import { AlertCircle, RefreshCcw } from 'lucide-react';
+import { AlertCircle, RefreshCcw } from '../ui/icons';
 
 type ScanControlPanelProps = {
     scanMode: ScanMode;

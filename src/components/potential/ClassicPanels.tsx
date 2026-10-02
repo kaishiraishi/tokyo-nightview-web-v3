@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Layers, Sparkles } from 'lucide-react';
+import { Layers, Sparkles } from '../ui/icons';
+import { CompassControl, type CompassControlProps } from './CompassControl';
 import { DirectionalField } from '../directional-field/DirectionalField';
 import type { DirectionPeak } from '../directional-field/types';
 import { PolarHeatmap } from '../polar-heatmap/PolarHeatmap';
@@ -19,6 +20,8 @@ type ClassicPanelsProps = {
     error: string | null;
     hasSelection: boolean;
     streetViewBlock: ReactNode;
+    rotation: number;
+    compass: CompassControlProps;
 };
 
 function EmptyPanel({ hasSelection }: { hasSelection: boolean }) {
@@ -48,10 +51,13 @@ export function ClassicPanels({
     error,
     hasSelection,
     streetViewBlock,
+    rotation,
+    compass,
 }: ClassicPanelsProps) {
     return (
         <div className="mt-4 space-y-3">
             <PrototypeControls range={maxDistance} onRangeChange={onRangeChange} />
+            <CompassControl {...compass} />
             <PanelStatus status={status} error={error} />
 
             {view === 'classicField' ? (
@@ -70,6 +76,7 @@ export function ClassicPanels({
                         <DirectionalField
                             peaks={directionPeaks}
                             size={246}
+                            rotation={rotation}
                             palette="opportunity"
                             showForward
                             interactive
@@ -95,6 +102,7 @@ export function ClassicPanels({
                             points={potentialPoints}
                             maxDistance={maxDistance}
                             size={246}
+                            rotation={rotation}
                             palette="potential"
                             showGrid
                             showCenter

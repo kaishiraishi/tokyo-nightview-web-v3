@@ -1,18 +1,21 @@
-import { LocateFixed, Compass } from 'lucide-react';
+import { LocateFixed, Compass } from './icons';
+import type { CSSProperties } from 'react';
 
 type CurrentLocationButtonProps = {
     onClick: () => void;
     isNorthUp: boolean;
     disabled?: boolean;
     className?: string; // Allow custom positioning if needed
+    style?: CSSProperties;
 };
 
-export function CurrentLocationButton({ onClick, isNorthUp, disabled, className }: CurrentLocationButtonProps) {
+export function CurrentLocationButton({ onClick, isNorthUp, disabled, className, style }: CurrentLocationButtonProps) {
     return (
         <button
             type="button"
             onClick={onClick}
             disabled={disabled}
+            style={style}
             aria-label={isNorthUp ? "現在地へ移動" : "北へ戻す"}
             className={`
                 group

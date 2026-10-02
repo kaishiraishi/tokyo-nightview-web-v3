@@ -1,15 +1,18 @@
 import { useRef, useState, useEffect, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from '../ui/icons';
+import { MOBILE_SHEET_HEIGHTS, type MobileSheetLevel } from './mobileSheet';
 
 type LayerMenuProps = {
     isOpen: boolean;
     onToggle: () => void;
     children: ReactNode;
+    mobileLevel?: MobileSheetLevel;
 };
 
-export function LayerMenu({ isOpen, onToggle, children }: LayerMenuProps) {
+export function LayerMenu({ isOpen, onToggle, children, mobileLevel }: LayerMenuProps) {
     const [isMobile, setIsMobile] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
+    const isAppleSheet = isMobile && mobileLevel !== undefined;
 
     // デバイス判定（簡易）
     useEffect(() => {
@@ -53,17 +56,27 @@ export function LayerMenu({ isOpen, onToggle, children }: LayerMenuProps) {
     // Mobile: fixed bottom-0, translate-y で出し入れ
     // Desktop: absolute top-4 left-4, translate-x で出し入れ
 
+    const panelStyle = isAppleSheet && mobileLevel
+        ? { height: MOBILE_SHEET_HEIGHTS[mobileLevel] }
+        : undefined;
+
     return (
         <div
             ref={panelRef}
+            style={panelStyle}
             className={`
-                z-[4000] transition-transform duration-300 ease-out
+                z-[4000] transition-[height,transform] duration-300 ease-out
+                ${isAppleSheet ? 'flex flex-col' : ''}
                 ${isMobile 
-                    ? 'fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-md rounded-t-2xl border-t border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] pb-[env(safe-area-inset-bottom)]' 
+                    ? isAppleSheet
+                        ? 'fixed bottom-0 left-0 right-0 overflow-hidden rounded-t-[28px] border border-b-0 border-white/10 bg-black/75 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl'
+                        : 'fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-md rounded-t-2xl border-t border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] pb-[env(safe-area-inset-bottom)]'
                     : 'absolute top-4 left-4 bottom-4 w-80 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl'
                 }
-                ${isOpen
-                    ? (isMobile ? 'translate-y-0' : 'translate-x-0')
+                ${isAppleSheet
+                    ? 'translate-y-0 translate-x-0'
+                    : isOpen
+                        ? (isMobile ? 'translate-y-0' : 'translate-x-0')
                     : (isMobile ? 'translate-y-[calc(100%-55px-env(safe-area-inset-bottom))]' : '-translate-x-[calc(100%+20px)]')
                 }
             `}
@@ -79,10 +92,16 @@ export function LayerMenu({ isOpen, onToggle, children }: LayerMenuProps) {
                     type="button"
                     onClick={onToggle}
                     aria-expanded={isOpen}
-                    aria-label={isOpen ? 'レイヤーメニューを閉じる' : 'レイヤーメニューを開く'}
-                    className="flex h-[55px] w-full cursor-pointer items-center justify-center rounded-t-2xl active:bg-white/5"
+                    aria-label={isAppleSheet
+                        ? mobileLevel === 'collapsed'
+                            ? '方向・距離シートを中段まで開く'
+                            : mobileLevel === 'medium'
+                                ? '方向・距離シートを最大まで開く'
+                                : '方向・距離シートを最小にする'
+                        : isOpen ? 'レイヤーメニューを閉じる' : 'レイヤーメニューを開く'}
+                    className={`flex ${isAppleSheet ? 'h-[34px] rounded-t-[28px]' : 'h-[55px] rounded-t-2xl'} w-full cursor-pointer items-center justify-center active:bg-white/5`}
                 >
-                    <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+                    <div className="h-1.5 w-12 rounded-full bg-white/25" />
                 </button>
             ) : (
                 // Desktop Toggle Button (Vertically Centered Tab - Larger & More Visible)
@@ -102,7 +121,7 @@ export function LayerMenu({ isOpen, onToggle, children }: LayerMenuProps) {
 
             {/* Content Container */}
             <div className={`
-                ${isMobile ? 'h-[60vh] supports-[height:100dvh]:h-[60dvh]' : 'h-full'}
+                ${isAppleSheet ? 'min-h-0 flex-1' : isMobile ? 'h-[60vh] supports-[height:100dvh]:h-[60dvh]' : 'h-full'}
                 overflow-hidden flex flex-col
             `}>
                 {children}

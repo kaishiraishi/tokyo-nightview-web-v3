@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import maplibregl from 'maplibre-gl';
-import { Camera, MapPin, Image as ImageIcon, Pin, Send, AlertCircle, Zap } from 'lucide-react';
+import { Camera, MapPin, Image as ImageIcon, Pin, Send, AlertCircle, Zap } from '../ui/icons';
 import { LayerMenu } from '../layout/LayerMenu';
 import { TopBar } from '../layout/TopBar';
 import { ScanControlPanel } from '../hud/ScanControlPanel';
@@ -1617,12 +1617,6 @@ export function MapViewExplore({
                     <PostListPanel
                         posts={posts}
                         // isLoading={isPostsLoading} // TODO: Add loading state to postsApi
-                        viirsEnabled={viirsEnabled}
-                        setViirsEnabled={setViirsEnabled}
-                        potentialEnabled={potentialEnabled}
-                        setPotentialEnabled={setPotentialEnabled}
-                        aerialEnabled={aerialEnabled}
-                        setAerialEnabled={setAerialEnabled}
                         onPostClick={(post) => {
                            map?.flyTo({
                                center: [post.location.lng, post.location.lat],

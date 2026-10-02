@@ -1,4 +1,4 @@
-import { MapPinned, Search } from 'lucide-react';
+import { MapPinned, Search } from '../ui/icons';
 import type { GeocodingResult } from '../../lib/api/geocodingApi';
 
 type PotentialTopBarProps = {

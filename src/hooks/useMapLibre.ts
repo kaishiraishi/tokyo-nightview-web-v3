@@ -26,13 +26,6 @@ const HILLSHADE_SOURCE_ID = 'terrainHillshade';
 const HILLSHADE_LAYER_ID = 'terrainHillshadeLayer';
 const TERRAIN_EXAGGERATION = 1.8;
 
-// ============================================
-// VIIRS Night Light Configuration
-// ============================================
-
-const VIIRS_SOURCE_ID = 'viirs-nightlight';
-const VIIRS_LAYER_ID = 'viirs-nightlight-layer';
-
 export const POTENTIAL_SOURCE_ID = 'potential-nightview';
 export const POTENTIAL_LAYER_ID = 'potential-nightview-layer';
 export const POTENTIAL_MODES = [
@@ -80,34 +73,6 @@ maplibregl.addProtocol(FILTERED_POTENTIAL_PROTOCOL, async (request) => {
 const AERIAL_SOURCE_ID = 'aerial-photo';
 const AERIAL_LAYER_ID = 'aerial-photo-layer';
 const AERIAL_TILE_URL = 'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg';
-
-function addVIIRSNightLight(map: maplibregl.Map) {
-    if (!map.getSource(VIIRS_SOURCE_ID)) {
-        map.addSource(VIIRS_SOURCE_ID, {
-            type: 'raster',
-            tiles: [`${import.meta.env.BASE_URL}viirs_heat_tiles/tiles/{z}/{x}/{y}.png`],
-            tileSize: 256,
-            minzoom: 10,
-            maxzoom: 12,
-        });
-        console.log('[VIIRS] Source added');
-    }
-
-    if (!map.getLayer(VIIRS_LAYER_ID)) {
-        map.addLayer({
-            id: VIIRS_LAYER_ID,
-            type: 'raster',
-            source: VIIRS_SOURCE_ID,
-            layout: {
-                visibility: 'none', // 常に非表示（サンプリング用にソースのみ利用）
-            },
-            paint: {
-                'raster-opacity': 0,
-            },
-        });
-        console.log('[VIIRS] Layer added as hidden');
-    }
-}
 
 function addPotentialLayer(map: maplibregl.Map) {
     for (const mode of POTENTIAL_MODES) {
@@ -448,7 +413,6 @@ export function useMapLibre(containerRef: RefObject<HTMLDivElement>) {
             ensureOverlays(map);
             addTerrain(map, gsiTerrainSource, TERRAIN_EXAGGERATION);
             addPlateauExtrusion(map);
-            addVIIRSNightLight(map);
             addPotentialLayer(map);
             addAerialPhoto(map);
 
@@ -464,7 +428,6 @@ export function useMapLibre(containerRef: RefObject<HTMLDivElement>) {
         map.on('style.load', () => {
             console.log('[Map] Style reloaded');
             addTerrain(map, gsiTerrainSource, TERRAIN_EXAGGERATION);
-            addVIIRSNightLight(map);
             addPotentialLayer(map);
             addAerialPhoto(map);
             addPlateauExtrusion(map);
