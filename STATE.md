@@ -41,6 +41,7 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 - 026 微調整: 表示モードの不透明度スライダーを常時表示に戻す。コンパスモード右上の方位表示（▲ 角度・方位名）を削除。ミニコンパスを投稿モードでも表示（投稿モードは地点選択がないので現在地の周囲を表示）
 - 027 方向・距離カードの中身を撤去: 探索モードのシートを検索欄だけにした（シート自体は維持）。`PotentialMapView` から ClassicPanels / PrototypePanel / CompassControl 呼び出しと、それ専用の `directionPeaks` などを削除。デバッグモード時の Street View リンクはシートに単独で残す。モバイルは検索結果を選ぶとシートを閉じる（広げたまま空で地図を隠すのを防ぐ）。未使用になったファイル（`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`、`directional-field/`、`polar-heatmap/`）は削除せず残した
 - 028 公開準備（モバイル対応・軽量化。`PLAN.md` 021 の P0）: 閾値焼き込み WebP タイル（`scripts/bake-potential-tiles.py`、4,969 枚 2.21MB、git 管理）に切り替え、`potential-filtered://` プロトコルを削除。`public/viirs_heat_tiles`（54,217 ファイル）をバックアップ後に削除（`~/Desktop/tokyo-nightview-backup/viirs_heat_tiles-2026-10-02.tar.gz`）。3D 建物は初回スマホ OFF、`pixelRatio` を 2 に制限、iOS の自動拡大対策（16px）、アイコン・manifest・meta、CI の検証更新、国土地理院・PLATEAU の出典表記
+- 029 GitHub Pages に初回デプロイ（2026-10-02）: Pages を GitHub Actions 配信で有効化（`gh api` で `build_type=workflow`）、commit `e3d8c033` を push して Actions が成功。公開 URL: https://kaishiraishi.github.io/tokyo-nightview-web-v3/ 。リポジトリは private だが、Pages のサイトは誰でも見られる（`public: true`）
 - 016 アイコン置換: lucide-react を Google Material Symbols（Outlined 400, Apache 2.0）に置換。path を `src/components/ui/icons.tsx` に埋め込み、lucide と同名・同 props（size / className）で import 先だけ変更。`lucide-react` は依存から削除
 
 ## In progress
@@ -56,7 +57,7 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 3. 方向・距離カードを撤去したため、classic 版 / prototype 版の表示選択（設定の `PanelViewSelector`）と未使用ファイルの扱いを決める（削除するか、設定項目だけ外すか）
 4. 権限のあるブラウザ環境で 014 の PC / モバイル mode 切替と投稿フォームの表示を目視確認する（URL は PROJECT.md「ローカル確認」。確認点: TopBar 両ボタンの往復、メニュー「投稿」→ 投稿モード、375×667 / 390×844 でボタン表示）
 5. 大きな機能追加の前に `PLAN.md` を書く（012では禁止事項により未変更）
-6. 公開（`PLAN.md` 021 の「人が行うこと」）: 実機確認 → コミットと push（承認後）→ GitHub Pages の Source を GitHub Actions に → 必要なら Secrets 設定
+6. 公開サイト（https://kaishiraishi.github.io/tokyo-nightview-web-v3/、HTTPS）を iOS Safari / Android Chrome の実機で確認する。特にコンパス（方位センサーの許可）と現在地、地図の滑らかさ・発熱、ホーム画面に追加。必要なら Secrets を設定
 7. 3D 建物タイルの自前生成（PLATEAU CityGML → PLATEAU GIS Converter → tippecanoe で PMTiles、ズーム 14〜16 を間引かずに生成、R2 に配置）: 範囲（23 区だけか多摩も含むか）と置き場所の判断待ち
 
 （旧 Explore/Analyze 系コードと `tools/dsm-api` の扱いは PROJECT.md の Non-goals により判断しない）
@@ -65,7 +66,7 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 
 - `npm run build` は成功するが、JS が 1.2 MB 超の chunk 警告
 - GitHub Pages のデプロイは「Pages site not found」で失敗している（Pages が未有効、2026-09-22〜29 の 3 回）。リポジトリ設定 → Pages → Source を GitHub Actions にする必要がある（人の操作）。公開前チェックは `PLAN.md` 021
-- 変更が未コミット・未 push（公開準備の作業ツリー）。コミット対象には削除した VIIRS タイル 54,217 ファイルと、新しい WebP タイル 4,969 ファイルが含まれる
+- 投稿機能は Supabase の Secrets 未設定のため、公開サイトではモック投稿のみ（`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` を Secrets に入れて再デプロイすると有効になる）
 
 ## Important files
 
@@ -102,6 +103,7 @@ v3 主画面（夜景ポテンシャル地図）で、「方向・距離」UI �
 - 025 実装後（2026-10-02）: `./scripts/verify.sh` PASS。agent-browser（390×844）で、表示モードの 3 タイル、コンパスの目盛り（読売ランド前駅付近で北側だけ強調）、シートが y=844 → 712 へ約 0.4 秒で持ち上がることを確認
 - 027 実装後（2026-10-02）: `./scripts/verify.sh` PASS。agent-browser で 390×844 と 1440×900 を確認（検索結果の表示と選択後のシート閉鎖、デバッグ ON/OFF での Street View リンク）
 - 028 実装後（2026-10-02）: `./scripts/verify.sh` PASS。焼き込み WebP は元 PNG + 閾値処理と 300 枚・約 59 万ピクセルで完全一致。Python の逆算と TS 関数は 45,000 ピクセルで差 0。スロットル下のパンは 18 → 46.7fps、最大の固まり 317 → 67ms。本番ビルドを iPhone 14 設定で確認（manifest・アイコン・タイルすべて 200、検索欄 16px、3D 建物は初期 OFF、見た目は変更前と同じ）。配信物 59,208 → 4,991 ファイル、約 5.8MB。**実機（iOS Safari / Android Chrome）は未確認。コンパス・現在地は HTTPS でないと動かないため公開後に確認する**
+- 029 公開後（2026-10-02）: Actions のビルドとデプロイが成功。公開 URL で `/`、manifest、アイコン、WebP タイルが 200、存在しないタイルは 404（想定どおり）。iPhone 14 設定のブラウザで地図とポテンシャルの表示を確認（HTTPS・secure context で DeviceOrientation / Geolocation API が使える状態）。コンソールの 404 は国土地理院の海上の標高タイルと範囲外のタイルで、動作に影響しない。実機は未確認
 - `npm test`: script なし（現段階では対象外）
 - ブラウザ: 旧 3 切替（現状 / Field / Polar）の描画は秦野西方で確認済み。4 種類化・012 のシート／Map Modes／全画面コンパス・014 の PC / モバイル切替は未確認。`npm run dev -- --host 127.0.0.1` は sandbox の `listen EPERM`、`agent-browser` は socket ディレクトリ書込不可で起動できなかった
 
