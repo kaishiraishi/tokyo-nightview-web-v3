@@ -10,7 +10,8 @@ type LayerMenuProps = {
 };
 
 export function LayerMenu({ isOpen, onToggle, children, mobileLevel }: LayerMenuProps) {
-    const [isMobile, setIsMobile] = useState(false);
+    // 初回描画から正しい側のアニメーションを使うよう、最初から画面幅で判定する
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     const panelRef = useRef<HTMLDivElement>(null);
     const isAppleSheet = isMobile && mobileLevel !== undefined;
 
@@ -66,7 +67,8 @@ export function LayerMenu({ isOpen, onToggle, children, mobileLevel }: LayerMenu
             style={panelStyle}
             className={`
                 z-[4000] transition-[height,transform] duration-300 ease-out
-                ${isAppleSheet ? 'flex flex-col' : ''}
+                ${isAppleSheet ? 'flex flex-col animate-sheet-rise' : ''}
+                ${!isMobile && isOpen ? 'animate-panel-slide-in' : ''}
                 ${isMobile 
                     ? isAppleSheet
                         ? 'fixed bottom-0 left-0 right-0 overflow-hidden rounded-t-[28px] border border-b-0 border-white/10 bg-black/75 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl'

@@ -149,7 +149,7 @@ export function PostComposer({ map, currentLocation, onRequestLocation, onPosted
                                     placeholder="夜景の感想を書いてください"
                                     maxLength={280}
                                     rows={3}
-                                    className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-violet-700/50 focus:outline-none"
+                                    className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-base text-white placeholder-white/40 focus:border-violet-700/50 md:text-sm focus:outline-none"
                                 />
                                 <div className="mt-1 text-right text-[10px] text-white/40">{message.length}/280</div>
                             </div>
@@ -198,7 +198,7 @@ export function PostComposer({ map, currentLocation, onRequestLocation, onPosted
                                         value={photoUrl}
                                         onChange={(event) => setPhotoUrl(event.target.value)}
                                         placeholder="または画像のURLを入力"
-                                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-violet-700/50 focus:outline-none"
+                                        className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-base text-white placeholder-white/40 focus:border-violet-700/50 md:text-sm focus:outline-none"
                                     />
                                 </div>
                             </div>

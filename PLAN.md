@@ -1,11 +1,129 @@
 # Plan
 
-## 013/014 投稿・探索モード切替（完了: 2026-10-01）
-- [x] ユーザーの明示依頼により旧投稿 UI の接続のみ許可。探索は現行 `PotentialMapView` を維持。
-- [x] `App` が `explore` / `analyze` の単一状態を所有し、explore は `PotentialMapView`、analyze は `PostModeView` adapter 経由の既存 `MapViewExplore` を条件レンダーする。旧探索 / DSM の機能は再接続しない。
-- [x] `TopBar` の既存カプセルをアクセシブルな二つの mode button に戻し、`hideSearch` のモバイルでも表示。投稿一覧へのメニュー動線も analyze へ接続。
-- [x] 投稿 UI、データ、座標、既存未コミット変更を保護し、必要最小限の props 接続だけを追加。
-- [x] 旧スキャン props は adapter で固定 null / idle 相当 / stable no-op とし、App に旧探索状態を追加しない。
-- [x] 完了条件: PC / モバイル両モードの相互切替、探索へ戻れる、既存 UI 維持、lint / typecheck / build 通過。
-- 進捗チェック（2026-10-01）: コード再点検と `./scripts/verify.sh` 再実行で問題なし。
-- 残る確認: 実ブラウザでの PC / モバイル目視確認は未実施。
+## 021 公開に向けた軽量化と配信方式（P0 実施: 2026-10-02。公開操作は人が行う）
+
+### 状態（2026-10-02）
+
+実施済み（作業ツリーにある。**未コミット・未 push**）:
+- 閾値（0.006）を焼き込んだ可逆 WebP タイルを `scripts/bake-potential-tiles.py` で生成し、`public/NightViewPotential_tiles/{z}/{x}/{y}.webp` に置いた（4,969 枚、実サイズ 2.21MB、うち 3,518 枚は完全に透明なタイル）。git 管理にする。生の PNG と中間ファイルは `tiles-work/`（git 管理外）へ移した。
+- クライアントを通常のラスターソース 1 本に変更（`potential-filtered://` カスタムプロトコルと 3 モード分のレイヤーを削除）。閾値は `POTENTIAL_THRESHOLD`（`src/lib/potentialSampler.ts`）に集約。
+- `public/viirs_heat_tiles`（54,217 ファイル）をリポジトリから削除。バックアップ: `~/Desktop/tokyo-nightview-backup/viirs_heat_tiles-2026-10-02.tar.gz`（2.2MB、ファイル数一致を確認）。復元は `tar xzf <file> -C public`。
+- 配信物: 59,208 ファイル → 4,991 ファイル、実サイズ約 5.8MB。
+- モバイル向け: 初回の 3D 建物はスマホだけオフ、MapLibre の `pixelRatio` を 2 に制限、検索欄とフォームの文字を 16px に（iOS のフォーカス時の自動拡大を防ぐ）、アイコン（favicon / apple-touch-icon / maskable）と `manifest.webmanifest`（ホーム画面に追加）、iOS / Android 向けの meta、`overscroll-behavior: none`、`touch-action: manipulation`。
+- 出典表記: 国土地理院（標高・陰影）と Project PLATEAU を追加。
+- CI（`.github/workflows/deploy.yml`）: lint を追加し、旧 VIIRS の確認を、WebP タイル 4,900 枚以上・manifest の存在確認に置き換えた。
+
+測定（CPU 4 倍スロットル、DPR 3、z13.5 から 5 秒パン、Vite 開発サーバー同士の比較）:
+
+| ポテンシャル表示中 | fps | 最大の固まり | 50ms 超のフレーム |
+|---|---|---|---|
+| 変更前 | 18 | 317ms | 12 |
+| 変更後 | 46.7 | 67ms | 4 |
+
+正しさの確認: 300 枚・約 59 万の表示ピクセルで、焼き込み WebP が元の PNG に閾値処理を掛けた結果と完全一致（食い違い 0）。Python の値の逆算は、TypeScript の `potentialValueFromPixel` と 45,000 ピクセルで差 0。
+
+人が行うこと（公開まで）:
+1. 実機（iPhone Safari / Android Chrome）で確認する（下の「公開前チェック」）。
+2. 変更をコミットし、push する（push・デプロイは人の承認後。AGENTS.md）。
+3. GitHub のリポジトリ設定 → Pages → Source を **GitHub Actions** にする（現在は未設定で、これまでのデプロイは全て失敗している）。
+4. 投稿機能を使うなら、リポジトリの Secrets に `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`（と、使うなら `VITE_CARTO_STYLE_DARK` など）を設定する。未設定でも動くが、投稿はモックのみになる。
+5. 外部サービスの規約を確認する（CARTO、Nominatim、PLATEAU の出典表記）。
+
+公開前チェック（実機）:
+- `npm run build && npm run preview -- --host` を実行し、同じ Wi-Fi の端末で `Network:` の URL を開く。**ただし、方位センサー（コンパス）と現在地は HTTPS でないと動かない**ので、これらは公開後の GitHub Pages（HTTPS）で確認する。
+- 確認点: 地図の操作の滑らかさと発熱、検索欄を押しても画面が拡大しないこと、下部シートの持ち上がり、ミニコンパス → コンパスモードの分割表示、表示モード画面、ホーム画面に追加したときのアイコンと全画面表示、設定の 3D 建物（スマホは初回オフ）。
+
+### 結論（検討時点の記録）
+
+- 地図が重い最大の原因は、ポテンシャル層のカスタムプロトコル `potential-filtered://`（`src/hooks/useMapLibre.ts`）。タイルを読むたびに、メインスレッドで 65,536 ピクセルすべての色を逆引きして閾値処理し、PNG に再エンコードしている。
+- 閾値（0.006 に固定済み）をタイル生成時に焼き込み、クライアントは普通のラスターソースで読むだけにする。CPU 4 倍スロットル下の計測で、移動中は 18fps → 58fps、最大停止は 317ms → 33ms になる見込み。
+- 同時にタイルを可逆 WebP にすると、配信量は約 17.5MB → 約 2.2MB（約 1/8）に減る。可逆なので色が変わらず、地点サンプリングもそのまま使える。
+- 公開前に必ず直すもの: 上記のタイル改善、`public/viirs_heat_tiles`（実サイズ 17.7MB だが 54,217 ファイル。VIIRS 表示は廃止済みなのに git 管理下で dist にコピーされる）の扱い、CI にタイルが無い問題、国土地理院の出典表記。
+
+### 計測（2026-10-02、M2 Mac / Chrome headless、390×844）
+
+| 項目 | 結果 |
+|---|---|
+| `applyPotentialThreshold` 1 タイル | 77ms（M2。スマホは数倍。ズーム 14 の 1 画面は 12〜20 タイル） |
+| CPU プロファイル（初回表示 → 検索 → 地点選択） | メインスレッドの JS 1.68 秒のうち、閾値処理（minify 後の `dv`）だけで 1.08 秒 |
+| 新しいタイルを読みながら 5 秒パン（CPU 4 倍スロットル、DPR 3） | ポテンシャル層あり: 18fps・最大 317ms・50ms 超 12 回 / 層なし: 59fps / 閾値処理なしの素のラスター: 58fps・最大 33ms |
+| 読み込み済みタイル上で円形にパン（スロットルなし） | 全条件 60fps。M2 の GPU では地形・PLATEAU・ポテンシャル層の描画は律速ではない |
+| 初回表示の通信 | JS 1.28MB（gzip 360KB）、z10 ポテンシャル 8 枚 498KB、国土地理院 DEM 41 リクエスト |
+| タイル総量 | z10–14 で 4,969 枚、実サイズ 17.5MB（`du` はブロック単位で 35MB と表示する）。z14 が半分を占める |
+| 閾値焼き込み後（400 枚を抽出） | 68% が完全に透明。残りは PNG 0.69 倍、可逆 WebP 0.13 倍、WebP q80 0.09 倍 |
+
+注意: スマホの GPU は計測していない。地形（3D）・陰影・PLATEAU の押し出しは、実機ではここより重く出る可能性がある。P1 の項目は実機で計ってから判断する。
+
+### 原因（影響の大きい順）
+
+1. **ポテンシャル層の閾値処理がメインスレッドで動く**: `potentialValueFromPixel` は 1 ピクセルごとに配列を作って map/reduce しており、GC も多い。そのあと `canvas.toBlob` で PNG に再エンコードし、MapLibre がもう一度デコードしている。
+2. **常時オンの 3D 地形と陰影**: `setTerrain`（誇張 1.8）と陰影が、国土地理院の別々の DEM ソースを 2 系統使っている。初期 41 リクエスト。ピッチ 0 の通常操作では見た目の効果が小さい。
+3. **PLATEAU 建物の押し出し（z13 以上）**: 第三者の GitHub Pages（`ysk766.github.io`）から全建物の MVT を読んでいる。スマホでは GPU・通信の負荷になり、公開サービスとしては可用性と帯域の面で依存リスクがある。
+4. **端末方位の更新が画面全体を再描画させる**: `useDeviceHeading` は RAF 平滑化した値を `PotentialMapView` 最上位の state に置いている。コンパス使用中は毎フレーム、画面全体の再レンダーと、ミニコンパス・パネルの Canvas（shadowBlur 付き）の再描画が起きる。
+5. **現在地の更新ごとに 216 点を再サンプリング**: ミニコンパス用の `compassAnalysis` が対象。
+6. 小さめのもの: 日本語ラベルのグリフをメインスレッドで描いている（今回のセッションで約 160ms）。モードごとに未使用のソース 2 本と旧レイヤーを登録している。DPR 3 の端末でそのまま 3 倍解像度で描いている。
+
+### 対策
+
+#### P0（公開前に必須）
+
+1. **閾値を焼き込んだ WebP タイル**
+   - `scripts/make-potential-tiles.sh` の色ランプで 0.006 未満を透明にし、可逆 WebP で出力する。gdal2tiles の PNG を変換する工程を足す。
+   - `useMapLibre` の `addProtocol` とモード 3 本のソースを削除し、`raster` ソース 1 本にする。`POTENTIAL_MODES` は閾値の定義として残す。
+   - `potentialSampler` の読み込み先を `.webp` に変える。色の逆引きはそのまま使える。
+   - 色ランプと `MAX_POTENTIAL_VALUE` の同期ルールは変えない。
+   - 期待効果: 移動中 18 → 58fps（スロットル下。実測は 46.7fps）、配信量 17.5MB → 約 2.2MB（実測 2.21MB）。
+   - 影響: 従来版の classicField / classicPolar は、閾値未満の弱い値も生値のまま表示している。焼き込むとそれが 0 になる。試作 field / polar はもともと閾値で 0 にしているので変わらない。→「判断が必要」2。
+2. **空タイルの扱い**: 68% が空になる。静的ホスティングで省くと 404 が大量に出るので、P0 では極小の透明 WebP を置く（1 枚 100B 程度、合計約 0.3MB）。P2 の PMTiles に移れば不要になる。
+3. **`public/viirs_heat_tiles` を配信から外す**: 54,217 ファイル（実サイズ 17.7MB。`du` の 212MB はブロック単位の値）。リポジトリから削除するか、`public/` の外へ移す。`.github/workflows/deploy.yml` の「Verify Tiles」（`dist/viirs_heat_tiles` を参照）も直す。
+4. **CI にタイルを渡す**: タイルは `.gitignore` 済みで、元の GeoTIFF はローカルにしかなく、CI では生成できない。WebP 化後は約 3MB なので、生成物を git に入れるのが最も単純。→「判断が必要」1。
+5. **出典表記**: `addTerrain` の DEM ソースに `attribution: '国土地理院'` を付ける（gsi-terrain の初期値は空文字）。PLATEAU（CC BY 4.0）、CARTO、OpenStreetMap の表記も公開画面で確認する。
+6. **GitHub Pages の有効化**: 直近 3 回のデプロイは「Pages site not found」で失敗している。リポジトリ設定で Source を GitHub Actions にする（人が操作する）。
+
+#### P1（実機で計測してから判断）
+
+- `new maplibregl.Map({ pixelRatio: Math.min(devicePixelRatio, 2) })`: DPR 3 の端末で塗る画素を約 55% 減らせる。
+- 3D 地形は、ピッチを付けたときだけ `setTerrain` する（陰影は残す）。DEM を 2 系統から 1 系統にまとめられるかも検証する。
+- PLATEAU: 公開版では無効にする、ズーム 14 以上に限る、自前でホスティングする（PMTiles）のいずれか。
+- 端末方位: `useSyncExternalStore` などの小さなストアに移し、ミニコンパス・CompassMode・パネルだけが購読するようにする。Canvas の再描画は角度が 0.5° 以上変わったときに限る。
+- 現在地サンプリング: 10m 以上動いたときだけ再サンプリングする。
+- コード分割: `CompassMode`、`MapModesModal`、`AppMenu`、`PostComposer`、投稿関連（Supabase・モック画像）を `React.lazy` にする。JS の約 2/3 は maplibre なので効果は限定的。サイズは測ってから決める。
+
+#### P2（公開後・規模が増えたら）
+
+- PMTiles（`pmtiles` は依存に既にある）を 1 ファイルで Cloudflare R2 に置き、Range リクエストで読む。空タイルが不要になり、ファイル名でバージョンを付けて `immutable` キャッシュにできる。
+- 数値タイル: z14 のサンプリング用に、値を RGB 24bit に符号化した可逆タイルを別に用意する。色の逆引きをなくし、0.1635 での飽和も解消する（PROJECT.md の「将来は数値タイル」）。表示用と分ける。
+- ベースマップの自前ホスティング（Protomaps の日本抽出）: CARTO の規約や可用性が問題になる場合だけ。
+
+### 配信方式
+
+| 方式 | 長所 | 短所 |
+|---|---|---|
+| GitHub Pages（現行ワークフロー） | 設定済みで追加の契約が不要 | `Cache-Control` は max-age=600 固定で変えられない。タイルは git に入れる必要がある |
+| Cloudflare Pages | `_headers` で `immutable` を付けられる、Brotli、無料、1 デプロイ 2 万ファイルまで | 新しいアカウントとワークフローが要る。base パスを `/` にするか、環境変数で切り替える |
+| Pages + R2 の PMTiles | タイル更新とアプリのデプロイを分けられる。空タイル不要 | R2 の CORS 設定と、pmtiles プロトコルの導入が要る |
+
+推奨: P0 は GitHub Pages ＋ WebP タイルを git に入れる形で公開する。最小の変更で、上の計測効果はすべて得られる。アクセスが増えるかタイルを頻繁に更新するようになったら、P2（R2 ＋ PMTiles）へ移る。
+
+### 外部サービスと規約（公開前に人が確認）
+
+- CARTO ベースマップ: 無料で使える条件（商用か非商用か、利用量）を最新の規約で確認する。
+- Nominatim（地名検索）: 利用ポリシーは 1 秒 1 リクエストまで、オートコンプリート禁止、アプリの識別が必要。現在は送信時だけ呼ぶので適合している。アクセスが増えたら、国土地理院の地名検索などへの切り替えを検討する。
+- 国土地理院タイル: 出典表記（P0-5）。
+- PLATEAU MVT: 第三者がホスティングしているもの。公開サービスで使い続けるなら、自前で用意する。
+- Supabase: anon キーはクライアントに公開される前提。RLS が有効かを確認する。
+
+### 判断が必要（人）
+
+1. タイルの置き場所: WebP 化したタイル（約 3MB）を git に入れるか、R2 などに置くか。
+2. 閾値の焼き込みで、従来版 View の閾値未満の弱い表示が消えること。従来版と試作版のどちらを採用するか（STATE.md の Next 3）を先に決めるか、サンプリング用に閾値なしの z14 タイルを別に持つか。
+3. `public/viirs_heat_tiles` をリポジトリから削除してよいか（git 履歴には残る）。
+4. 公開版で 3D 地形と PLATEAU 建物を残すか。
+5. ホスティング先: GitHub Pages のままか、Cloudflare Pages か。
+
+### 検証方法
+
+- `./scripts/verify.sh`。
+- 上の計測を同じ条件で再実行する: CPU 4 倍スロットル、DPR 3、z13.5 から 5 秒間東へパン、fps と最大停止を見る。
+- 初回表示の転送量。
+- iOS Safari と Android Chrome の実機で、パン・ズーム・コンパス使用中の体感と発熱を確認する。

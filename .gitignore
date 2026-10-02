@@ -20,8 +20,6 @@ __pycache__/
 SERVER_RESTART.md
 directory_report.md
 
-# Potential tile generation intermediates
-public/NightViewPotential_tiles/work/
-
-# Potential tiles (regenerate via scripts/make-potential-tiles.sh)
-public/NightViewPotential_tiles/
+# Potential tile generation intermediates (raw gdal2tiles PNG + rasters). Regenerate via scripts/make-potential-tiles.sh
+# The served WebP tiles in public/NightViewPotential_tiles/ ARE committed.
+tiles-work/

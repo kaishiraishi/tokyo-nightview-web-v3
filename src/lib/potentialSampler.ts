@@ -17,6 +17,9 @@ type ColorRampStop = {
 const TILE_SIZE = 256;
 const SAMPLE_ZOOM = 14;
 export const MAX_POTENTIAL_VALUE = 0.1635;
+// 地図に出すポテンシャルの閾値（「絞って探す」）。タイル生成時に焼き込み済み（scripts/bake-potential-tiles.py の
+// --threshold と一致させる）。クライアントでは方向・距離の ViewModel にも同じ値を渡す
+export const POTENTIAL_THRESHOLD = 0.006;
 const TILE_CACHE = new Map<string, Promise<TileData | null>>();
 
 // Keep this in sync with scripts/make-potential-tiles.sh.
@@ -68,7 +71,7 @@ async function loadTile(tileX: number, tileY: number, zoom: number) {
             resolve({ pixels: context.getImageData(0, 0, TILE_SIZE, TILE_SIZE).data });
         };
         image.onerror = () => resolve(null);
-        image.src = `${import.meta.env.BASE_URL}NightViewPotential_tiles/${zoom}/${tileX}/${tileY}.png`;
+        image.src = `${import.meta.env.BASE_URL}NightViewPotential_tiles/${zoom}/${tileX}/${tileY}.webp`;
     });
 
     TILE_CACHE.set(key, request);
@@ -102,14 +105,6 @@ export function potentialValueFromPixel(pixel: [number, number, number, number])
     }
 
     return Math.max(0, Math.min(MAX_POTENTIAL_VALUE, bestValue));
-}
-
-export function applyPotentialThreshold(pixels: Uint8ClampedArray, threshold: number) {
-    for (let offset = 0; offset < pixels.length; offset += 4) {
-        const value = potentialValueFromPixel([pixels[offset], pixels[offset + 1], pixels[offset + 2], pixels[offset + 3]]);
-        if (value < threshold) pixels[offset + 3] = 0;
-    }
-    return pixels;
 }
 
 async function samplePotentialValue(location: MapLocation) {

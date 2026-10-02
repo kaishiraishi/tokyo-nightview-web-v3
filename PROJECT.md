@@ -55,7 +55,7 @@
 - 投稿の取得は `usePosts`、地図上の表示は `usePostPopups`。投稿モードに入るまで Supabase は呼ばない
 - Map and layer registration: `src/hooks/useMapLibre.ts`
 - Pixel sampling and polar data: `src/lib/potentialSampler.ts`
-- Potential tiles: `public/NightViewPotential_tiles/`（`.gitignore` 済み。Git には含めず `scripts/make-potential-tiles.sh` で再生成する）
+- Potential tiles: `public/NightViewPotential_tiles/{z}/{x}/{y}.webp`（閾値 0.006 を焼き込んだ可逆 WebP、約 2.2MB。**Git 管理**）。生の PNG と中間ファイルは `tiles-work/`（git 管理外）。再生成は `scripts/make-potential-tiles.sh`
 - Tile generation: `scripts/make-potential-tiles.sh`
 - Deployment base path: `vite.config.ts` の `/tokyo-nightview-web-v3/`
 - ローカル確認: `npm run dev` → `http://localhost:5173/tokyo-nightview-web-v3/`（末尾のベースパス必須。ポートが埋まっていれば Vite が表示する `Local:` の URL）。実機は `npm run dev -- --host` の `Network:` URL を同じ Wi-Fi から開く
@@ -66,20 +66,22 @@
 
 ## Current UI
 
-- レイアウト（探索・投稿共通、モバイル / PC 共通）: 左上にミニコンパス（`MiniCompass`。カード内の Directional Field（試作 `field`、`prototypes/DirectionalField.tsx` の `variant="mini"`）を 64px に縮小したもの。Figma 準拠で背景・枠なし、細いリングと外側の N/E/S/W 目盛り（N は赤）、方位文字と中心マーカーは省略。端末方位（なければ地図の bearing）で回転し、中央は Range。タップで全画面コンパス。投稿モードでは非表示）、右上に探索 / 投稿の切替ピル（`MapModeToggle`）、右下に現在地と Map Modes の縦ボタン列（`MapControlStack`）。検索とメニュー（設定）ボタンは `LayerMenu`（PC はサイドパネル、モバイルは下部シート）の上部。主画面では `TopBar` を使わない。ガラス調（`bg-black/60` + `backdrop-blur-md` + `border-white/10`）、基本テキストは `White/90`、補助は `White/50`。
+- レイアウト（探索・投稿共通、モバイル / PC 共通）: 左上にミニコンパス（`MiniCompass`。カード内の Directional Field（試作 `field`、`prototypes/DirectionalField.tsx` の `variant="mini"`）を 64px に縮小したもの。細いリングと外側の N/E/S/W 目盛り（N は赤）。地図と同化しないよう、他の地図ボタンと同じガラス調の円（`bg-black/55` + `backdrop-blur-md`）を背後に敷く、方位文字と中心マーカーは省略。端末方位（なければ地図の bearing）で回転し、中央は Range。タップでコンパスモード。探索・投稿の両モードで表示）。コンパスモードは画面を縦に 2 分割し、上半分が `CompassMode`（目盛りが方向ごとの強さの棒グラフになった文字盤: 中心を除いた方向別最大値を最小〜最大で正規化し、上位の方向だけポテンシャルの色で外へ伸ばす。上方向（端末の向き）に固定の視野扇形。カーナビ風の縮尺バーと ＋/− で Range を変更）、下半分が地図。分割中は下部シート・ミニコンパス・モード切替を隠し、地図は作り直さず枠の高さだけ変える、右上に探索 / 投稿の切替ピル（`MapModeToggle`）、右下に現在地と Map Modes の縦ボタン列（`MapControlStack`）。検索とメニュー（設定）ボタンは `LayerMenu`（PC はサイドパネル、モバイルは下部シート）の上部。主画面では `TopBar` を使わない。ガラス調（`bg-black/60` + `backdrop-blur-md` + `border-white/10`）、基本テキストは `White/90`、補助は `White/50`。
 - 配色: 紫はネオンにせず落ち着いた灯りとして扱う。塗りは選択中・主ボタンに限り、淡い紫は枠・フォーカスに使う。青は航空写真などレイヤー状態だけ、赤はエラーと北方向だけ。
-- `LayerMenu` の内容: レイヤー ON/OFF（ポテンシャル / 航空写真。VIIRS 表示は廃止）、不透明度、凡例、方向・距離パネル。
+- 表示モード（右下の地図ボタン → `MapModesModal`）: 標準 / ポテンシャル / 航空写真 から 1 つを選ぶ（Apple マップの Map Modes 型。航空写真とポテンシャルの重ね表示はしない）。サムネイルはアプリの地図を撮影した `src/assets/map-modes/*.webp`（川崎市多摩区付近 z13、地図の見た目を変えたら撮り直す）。不透明度スライダーは常に表示。VIIRS 表示は廃止
+- 下部シート（モバイル）は表示時に下から持ち上がり、サイドパネル（PC）は左から入る（`index.css` の `animate-sheet-rise` / `animate-panel-slide-in`、reduced-motion では無効）
 - 探索 / 投稿の切替は `MapModeToggle`（地図アイコン = 探索、紫のスパークル = 投稿）。`aria-pressed` で現在の mode を示す。メニューの「投稿」行も投稿モードへ切り替える。
 - 地図のポテンシャル表示は「絞って探す」（閾値 0.006）に固定。
-- 方向・距離パネルの表示は 4 種類「Field（従来）/ Polar（従来）/ Field（試作）/ Polar（試作）」で、カードには 1 つだけ出す。選択は メニュー → 設定 の `PanelViewSelector` で選ぶ（`localStorage` の `nightview.panelView` に保存）。メニュー・設定画面もトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）。`classicField` / `classicPolar` は従来の `DirectionalField` + `PolarHeatmap`、`field` / `polar` は `src/components/potential/prototypes/`（共通 ViewModel から描画、Range ボタンで全 View 同時更新）。
-- 選択地点からは Google Maps Street View を別タブで開くリンクだけを出す。このリンクはデバッグモード時のみ表示し、デバッグモードは メニュー → 設定 のスイッチで切り替える（`localStorage` の `nightview.debugMode`、既定 OFF、`src/lib/debugMode.ts`）（規約上、Google 画像・API を MapLibre 画面に埋め込まない。Maps Platform ToS §3.2.3(e)）。
+- PLATEAU の 3D 建物（`useMapLibre` の `plateau-bldg-extrusion`、第三者がホスティングしている MVT `ysk766.github.io/plateau_tokyo_2023_mvt_lod1`）は、メニュー → 設定 の「3D 建物」スイッチでオン/オフする（`nightview.buildings3d`、既定 ON）。このタイルは tippecanoe の `--drop-densest-as-needed` で密集地の建物が間引かれていて、西新宿の高層ビル街などが欠ける。自前での再生成は検討中
+- 探索モードのシート（モバイルは下部、PC は左パネル）は検索欄だけ（2026-10-02 に方向・距離カードの中身を撤去）。方向・距離の分析はミニコンパス → コンパスモードで見る。選択地点があり、かつデバッグモードのときだけ Street View リンクをシートに出す。検索結果を選ぶと、モバイルではシートを閉じる。以前の 4 種類（classicField / classicPolar / field / polar、`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`）は主画面から呼ばれていない。設定の `PanelViewSelector`（`nightview.panelView`）は残っているが、今は表示に影響しない。メニュー・設定画面はトップと同じガラス調（`src/styles/ui.ts` の `glassPanel`）
+- 選択地点からは Google Maps Street View を別タブで開くリンクだけを出す。このリンクはデバッグモード時のみ表示し、デバッグモードは メニュー → 設定 のスイッチで切り替える（`localStorage` の `nightview.debugMode`、既定 OFF、`src/lib/storedSettings.ts`）（規約上、Google 画像・API を MapLibre 画面に埋め込まない。Maps Platform ToS §3.2.3(e)）。
 - 探索モードでは旧 V2 の ScanControlPanel / 旧探索用 deck.gl UI は使わない。投稿モードでは明示許可された既存 `MapViewExplore` の投稿 UI だけを表示する。
 
 ## Data pipeline
 
 - 元データ: Float32 GeoTIFF（EPSG:6677）。生成側の入力パスは `scripts/make-potential-tiles.sh` の `IN_TIF`。
-- 生成: `scripts/make-potential-tiles.sh` が (1) EPSG:3857 へ再投影 (2) `scripts/smooth-potential-raster.py` で 90m グリッドをマスク付きガウス平滑化 (3) 色ランプ (4) `gdaldem color-relief` (5) `gdal2tiles.py --xyz` でズーム 10–14 の XYZ PNG を `public/NightViewPotential_tiles/` に出力。
-- 色ランプと `MAX_POTENTIAL_VALUE = 0.1635` は `scripts/make-potential-tiles.sh` と `src/lib/potentialSampler.ts` で必ず同期する。
-- クライアント: `src/hooks/useMapLibre.ts` が MapLibre カスタムプロトコル `potential-filtered://` で PNG を閾値処理して表示（3 モード分のレイヤーを登録し、表示は 1 つ）。タイル URL は `import.meta.env.BASE_URL` 経由。
-- 値の扱い: PNG の RGBA から色ランプを逆引きした近似値であり、Float32 の真値ではない。0.1635 以上は strength 1 に飽和するため、高ポテンシャル同士の比較はできない。将来は数値タイル / COG を検討する（Prototype 比較後）。
+- 生成: `scripts/make-potential-tiles.sh` が (1) EPSG:3857 へ再投影 (2) `scripts/smooth-potential-raster.py` で 90m グリッドをマスク付きガウス平滑化 (3) 色ランプ (4) `gdaldem color-relief` (5) `gdal2tiles.py --xyz` でズーム 10–14 の XYZ PNG を `tiles-work/potential-png/` に出力 (6) `scripts/bake-potential-tiles.py`（numpy + Pillow）が、色ランプの逆引きで値が閾値（0.006）未満のピクセルを透明にし、可逆 WebP として `public/NightViewPotential_tiles/` に書き出す。全面が透明になるタイルも透明な WebP として必ず置く（404 だと MapLibre が親タイルで代用するため）。タイルを作り直したら、生成物をコミットする
+- 色ランプ・`MAX_POTENTIAL_VALUE = 0.1635`・閾値 `0.006` は `scripts/make-potential-tiles.sh`、`scripts/bake-potential-tiles.py`、`src/lib/potentialSampler.ts`（`POTENTIAL_COLOR_RAMP` / `MAX_POTENTIAL_VALUE` / `POTENTIAL_THRESHOLD`）で必ず同期する。
+- クライアント: `src/hooks/useMapLibre.ts` が WebP タイルを通常の MapLibre ラスターソース 1 本（`potential-nightview` / `potential-nightview-layer`）として表示する。閾値処理はクライアントでは行わない。タイル URL は `import.meta.env.BASE_URL` 経由。表示の ON/OFF と不透明度は `PotentialMapView` がレイヤーのプロパティで切り替える
+- 値の扱い: タイルの RGBA から色ランプを逆引きした近似値。閾値未満のピクセルは焼き込みで透明になっているため、サンプリングでは 0 として読まれる（以前は小さな正の値だった。表示用 ViewModel は閾値未満を 0 扱いにするので見た目は同じ）であり、Float32 の真値ではない。0.1635 以上は strength 1 に飽和するため、高ポテンシャル同士の比較はできない。将来は数値タイル / COG を検討する（Prototype 比較後）。
 - サンプリング: `samplePotentialGrid`（24 方位 × 9 距離 = 216 点、方位は 0°=北の地理方位、z14 タイルから取得、タイルはキャッシュ）。UI は `usePotentialAnalysis` を経由し、View 内でデータ取得しない。

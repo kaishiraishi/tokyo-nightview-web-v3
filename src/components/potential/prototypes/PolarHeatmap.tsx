@@ -1,13 +1,18 @@
 import { useState, type PointerEvent } from 'react';
 import { potentialColorCss } from './colorScale';
-import { annularSector, CANVAS_SIZE, CENTER, compassName, drawCenterMarker, formatDistance, useDrawCanvas } from './canvas';
+import { annularSector, CANVAS_SIZE, CENTER, compassName, drawCenterMarker, formatDistance, POLAR_INNER_RADIUS, POLAR_OUTER_RADIUS, useDrawCanvas } from './canvas';
 import { drawCompassLabels, rotateCompassCanvas } from '../compassCanvas';
 import type { PolarCell, PotentialViewModel } from './types';
 
-const INNER_RADIUS = 14;
-const OUTER_RADIUS = 122;
+const INNER_RADIUS = POLAR_INNER_RADIUS;
+const OUTER_RADIUS = POLAR_OUTER_RADIUS;
 
-export function PolarHeatmapView({ data, rotation = 0, showCompassLabels = true }: { data: PotentialViewModel; rotation?: number; showCompassLabels?: boolean }) {
+export function PolarHeatmapView({
+    data,
+    rotation = 0,
+    showCompassLabels = true,
+    showDistanceLabels = true,
+}: { data: PotentialViewModel; rotation?: number; showCompassLabels?: boolean; showDistanceLabels?: boolean }) {
     const [hovered, setHovered] = useState<PolarCell | null>(null);
     const { bearingCount, distanceCount, cells } = data.polarField;
 
@@ -53,14 +58,16 @@ export function PolarHeatmapView({ data, rotation = 0, showCompassLabels = true 
             context.strokeStyle = 'rgba(255,255,255,0.14)';
             context.lineWidth = 1;
             context.stroke();
-            context.fillStyle = 'rgba(255,255,255,0.4)';
-            context.fillText(formatDistance(data.range * fraction), CENTER + 3, CENTER - radius - 2);
+            if (showDistanceLabels) {
+                context.fillStyle = 'rgba(255,255,255,0.4)';
+                context.fillText(formatDistance(data.range * fraction), CENTER + 3, CENTER - radius - 2);
+            }
         }
 
         drawCenterMarker(context);
         if (showCompassLabels) drawCompassLabels(context, CENTER, CANVAS_SIZE / 2 - 12, 14);
         context.restore();
-    }, [cells, data.range, rotation, showCompassLabels]);
+    }, [cells, data.range, rotation, showCompassLabels, showDistanceLabels]);
 
     const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
         const rect = event.currentTarget.getBoundingClientRect();

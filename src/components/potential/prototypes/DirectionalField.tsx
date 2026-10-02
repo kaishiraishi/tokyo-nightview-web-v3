@@ -8,8 +8,8 @@ import type { PotentialViewModel } from './types';
 // mini: 地図左上のミニコンパス（64px 表示、Figma 準拠）。背景なしの細いリングに、方位文字の代わりに
 // 外側の短い目盛りを描く。中心マーカーは描かない（中央に Range を重ねる）。
 const FIELD_STYLES = {
-    full: { innerRadius: 104, baseThickness: 10, maxExpansion: 12, glowBase: 6, glowBoost: 18, highlightWidth: 1.5 },
-    mini: { innerRadius: 104, baseThickness: 18, maxExpansion: 10, glowBase: 8, glowBoost: 16, highlightWidth: 3 },
+    full: { innerRadius: 104, baseThickness: 10, maxExpansion: 12, glowBase: 6, glowBoost: 18, highlightWidth: 1.5, baseRingAlpha: 0.08 },
+    mini: { innerRadius: 104, baseThickness: 18, maxExpansion: 10, glowBase: 8, glowBoost: 16, highlightWidth: 3, baseRingAlpha: 0.18 },
 } as const;
 const MINI_TICK = { inner: 138, outer: 150, width: 6 };
 
@@ -31,14 +31,14 @@ export function DirectionalFieldView({ data, rotation = 0, variant = 'full' }: {
     const smoothed = useMemo(() => smoothProfile(data.directionProfile.map((value) => value.visualStrength)), [data.directionProfile]);
 
     const ref = useDrawCanvas((context) => {
-        const { innerRadius, baseThickness, maxExpansion, glowBase, glowBoost, highlightWidth } = FIELD_STYLES[variant];
+        const { innerRadius, baseThickness, maxExpansion, glowBase, glowBoost, highlightWidth, baseRingAlpha } = FIELD_STYLES[variant];
 
         context.save();
         rotateCompassCanvas(context, CENTER, rotation);
 
         // 2 base ring (0 値と「UI が存在しない」状態を区別する)
         annularSector(context, innerRadius, innerRadius + baseThickness, 0, 359.99);
-        context.fillStyle = 'rgba(255,255,255,0.08)';
+        context.fillStyle = `rgba(255,255,255,${baseRingAlpha})`;
         context.fill();
 
         const segments = Array.from({ length: 360 / SEGMENT_DEGREES }, (_, index) => {

@@ -23,7 +23,8 @@ export function MiniCompass({ data, rotation, range, isLoading, onClick }: MiniC
             onClick={onClick}
             aria-label={`コンパスモードを開く（範囲 ${label}）`}
             title="コンパスモード"
-            className="relative grid h-16 w-16 shrink-0 place-items-center rounded-full transition-transform active:scale-95"
+            // 地図の道路やラベルと重なっても読めるよう、他の地図ボタンと同じガラス調の円を敷く
+            className="relative grid h-16 w-16 shrink-0 place-items-center rounded-full border border-white/10 bg-black/55 shadow-lg backdrop-blur-md transition-transform active:scale-95"
         >
             <span className={`pointer-events-none absolute inset-0 ${isLoading ? 'opacity-45' : ''}`} aria-hidden="true">
                 {data ? (
@@ -31,7 +32,7 @@ export function MiniCompass({ data, rotation, range, isLoading, onClick }: MiniC
                 ) : (
                     // データがない間も、mini の基礎リング（内半径 104 / 太さ 18、300px 座標）と目盛りを同じ位置に出す
                     <span className="absolute inset-0" style={{ transform: `rotate(${-rotation}deg)` }}>
-                        <span className="absolute inset-[9.3%] rounded-full border-4 border-white/[0.12]" />
+                        <span className="absolute inset-[9.3%] rounded-full border-4 border-white/[0.18]" />
                         {[0, 90, 180, 270].map((bearing) => (
                             <span key={bearing} className="absolute inset-0" style={{ transform: `rotate(${bearing}deg)` }}>
                                 <span className={`absolute left-1/2 top-0 h-[3px] w-[1.5px] -translate-x-1/2 rounded-full ${bearing === 0 ? 'bg-red-400' : 'bg-white/55'}`} />

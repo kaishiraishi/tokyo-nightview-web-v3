@@ -51,7 +51,8 @@ export function SearchField({
             <div className={`flex w-full items-center gap-3 border border-white/10 transition-colors ${classes.field} ${classes.height}`}>
                 <Search className="h-5 w-5 shrink-0 text-white/50" aria-hidden="true" />
                 <input
-                    className="h-full min-w-0 flex-1 bg-transparent text-sm text-white placeholder-white/45 outline-none"
+                    // 16px 未満だと iOS Safari がフォーカス時に画面を拡大するので、スマホは 16px にする
+                    className="h-full min-w-0 flex-1 bg-transparent text-base text-white placeholder-white/45 outline-none md:text-sm"
                     placeholder={classes.placeholder}
                     type="search"
                     value={searchQuery}

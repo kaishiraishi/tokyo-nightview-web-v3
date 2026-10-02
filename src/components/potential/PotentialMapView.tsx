@@ -5,23 +5,20 @@ import { LayerMenu } from '../layout/LayerMenu';
 import { SearchField } from '../layout/SearchField';
 import { MOBILE_SHEET_CONTROL_BOTTOMS, nextMobileSheetLevel, type MobileSheetLevel } from '../layout/mobileSheet';
 import { AppMenu } from '../menu/AppMenu';
-import { ClassicPanels } from './ClassicPanels';
 import { CompassMode } from './CompassMode';
 import { MapControlStack } from './MapControlStack';
 import { MapModesModal } from './MapModesModal';
 import { MapModeToggle } from './MapModeToggle';
 import { MiniCompass } from './MiniCompass';
-import type { CompassControlProps } from './CompassControl';
 import { UserLocationMarker } from './UserLocationMarker';
 import { PostListPanel } from '../hud/PostListPanel';
 import { PostComposer } from './PostComposer';
-import { PrototypePanel } from './prototypes/PrototypePanel';
-import { PANEL_VIEWS, readStoredPanelView, type PanelView, writeStoredPanelView } from './PanelViewSelector';
-import { readStoredDebugMode, writeStoredDebugMode } from '../../lib/debugMode';
+import { readStoredPanelView, type PanelView, writeStoredPanelView } from './PanelViewSelector';
+import { readStoredBuildingsEnabled, readStoredDebugMode, writeStoredBuildingsEnabled, writeStoredDebugMode } from '../../lib/storedSettings';
 import { type PotentialRange } from './prototypes/types';
-import { deriveDirectionPeaks, polarPointsFromGrid, type MapLocation } from '../../lib/potentialSampler';
+import { POTENTIAL_THRESHOLD, type MapLocation } from '../../lib/potentialSampler';
 import { usePotentialAnalysis } from '../../hooks/usePotentialAnalysis';
-import { useMapLibre, POTENTIAL_MODES, POTENTIAL_FILTERED_LAYER_PREFIX } from '../../hooks/useMapLibre';
+import { useMapLibre, POTENTIAL_LAYER_ID, PLATEAU_LAYER_ID } from '../../hooks/useMapLibre';
 import { usePostPopups } from '../../hooks/usePostPopups';
 import { usePosts } from '../../hooks/usePosts';
 import { useUserLocation } from '../../hooks/useUserLocation';
@@ -29,9 +26,6 @@ import { useDeviceHeading } from '../../hooks/useDeviceHeading';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import { normalizeAngle } from '../../lib/heading';
 import 'maplibre-gl/dist/maplibre-gl.css';
-
-// 地図の手がかり量は「絞って探す」に固定
-const POTENTIAL_MODE_ID = 'focused';
 
 // メニューのプロフィール表示用の仮データ（認証・プロフィールは Non-goals）
 const MENU_PROFILE = {
@@ -43,6 +37,9 @@ const MENU_PROFILE = {
 
 // 右下ボタン列（2 ボタン + 余白）の上に投稿ボタンを置くためのオフセット
 const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 24px)';
+
+// コンパス分割表示中はシートがないので、地図下端の出典表示（2 行になることがある）の上にボタン列を置く
+const SPLIT_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom))';
 
 function getIsMobileViewport() {
     return typeof window !== 'undefined' && window.innerWidth < 768;
@@ -72,6 +69,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
     const [panelView, setPanelView] = useState<PanelView>(() => readStoredPanelView());
     const [debugMode, setDebugMode] = useState(() => readStoredDebugMode());
+    const [buildingsEnabled, setBuildingsEnabled] = useState(() => readStoredBuildingsEnabled());
     const [maxDistance, setMaxDistance] = useState<PotentialRange>(200);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
@@ -83,10 +81,10 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const isPostMode = mode === 'analyze';
     const { posts, reload: reloadPosts } = usePosts(isPostMode);
     usePostPopups(map, isLoaded, posts, isPostMode);
-    const { rawSamples, viewModel, isLoading: isSampling, error: samplingError } = usePotentialAnalysis({
+    const { viewModel, isLoading: isSampling, error: samplingError } = usePotentialAnalysis({
         center: selectedLocation,
         range: maxDistance,
-        threshold: POTENTIAL_MODES.find((mode) => mode.id === POTENTIAL_MODE_ID)!.threshold,
+        threshold: POTENTIAL_THRESHOLD,
     });
     const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>(() => getIsMobileViewport() ? 'collapsed' : 'expanded');
     const [isMapModesOpen, setIsMapModesOpen] = useState(false);
@@ -100,23 +98,11 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const compassAnalysis = usePotentialAnalysis({
         center: selectedLocation ? null : currentLocation,
         range: maxDistance,
-        threshold: POTENTIAL_MODES.find((mode) => mode.id === POTENTIAL_MODE_ID)!.threshold,
+        threshold: POTENTIAL_THRESHOLD,
     });
     const compassViewModel = selectedLocation ? viewModel : compassAnalysis.viewModel;
     const compassIsSampling = selectedLocation ? isSampling : compassAnalysis.isLoading;
-    const potentialPoints = useMemo(() => (rawSamples ? polarPointsFromGrid(rawSamples) : []), [rawSamples]);
-    const directionPeaks = useMemo(
-        () => deriveDirectionPeaks(potentialPoints.filter((point) => point.distance <= maxDistance)),
-        [maxDistance, potentialPoints],
-    );
-    const currentPanelViewLabel = PANEL_VIEWS.find((view) => view.id === panelView)?.label ?? PANEL_VIEWS[0].label;
     const rotation = deviceHeading.status === 'active' && deviceHeading.heading !== null ? deviceHeading.heading : normalizeAngle(mapBearing);
-    const compassEnabled = deviceHeading.status === 'requesting' || deviceHeading.status === 'active';
-    const panelStatus = isSampling
-        ? 'クリック地点の周囲をサンプリング中…'
-        : selectedLocation
-            ? `選択地点 ${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`
-            : '地図上をクリックして地点を選択';
 
     useEffect(() => {
         const handleViewportResize = () => {
@@ -180,13 +166,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     }, [map, selectedLocation, isPostMode]);
 
     useEffect(() => {
-        if (!map || !isLoaded) return;
-        for (const mode of POTENTIAL_MODES) {
-            const layerId = `${POTENTIAL_FILTERED_LAYER_PREFIX}${mode.id}`;
-            if (!map.getLayer(layerId)) continue;
-            map.setLayoutProperty(layerId, 'visibility', potentialEnabled && mode.id === POTENTIAL_MODE_ID ? 'visible' : 'none');
-            map.setPaintProperty(layerId, 'raster-opacity', potentialOpacity);
-        }
+        if (!map || !isLoaded || !map.getLayer(POTENTIAL_LAYER_ID)) return;
+        map.setLayoutProperty(POTENTIAL_LAYER_ID, 'visibility', potentialEnabled ? 'visible' : 'none');
+        map.setPaintProperty(POTENTIAL_LAYER_ID, 'raster-opacity', potentialOpacity);
     }, [map, isLoaded, potentialEnabled, potentialOpacity]);
 
     useEffect(() => {
@@ -194,6 +176,12 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         const aerialLayer = map.getLayer('aerial-photo-layer');
         if (aerialLayer) map.setLayoutProperty('aerial-photo-layer', 'visibility', aerialEnabled ? 'visible' : 'none');
     }, [map, isLoaded, aerialEnabled]);
+
+    useEffect(() => {
+        // 非表示のレイヤーのタイルは MapLibre が取得しないので、オフにすると通信と描画の両方が減る
+        if (!map || !isLoaded || !map.getLayer(PLATEAU_LAYER_ID)) return;
+        map.setLayoutProperty(PLATEAU_LAYER_ID, 'visibility', buildingsEnabled ? 'visible' : 'none');
+    }, [map, isLoaded, buildingsEnabled]);
 
     useEffect(() => {
         if (!locateError) return;
@@ -218,7 +206,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         map?.flyTo({ center: [result.lng, result.lat], zoom: 13, duration: 1200 });
         setSearchQuery(result.displayName.split(',')[0]);
         setShowResults(false);
-    }, [map]);
+        // シートは検索結果を見せるために広げている。選んだら、飛んだ先の地図が見えるよう閉じる
+        if (isMobileViewport) setMobileSheetLevel('collapsed');
+    }, [isMobileViewport, map]);
 
     const handleLocate = useCallback(() => {
         if (!map) return;
@@ -246,18 +236,6 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         setIsCompassModeOpen(false);
     }, [stopDeviceHeading]);
 
-    const compassControl: CompassControlProps = {
-        enabled: compassEnabled,
-        onToggle: isMobileViewport
-            ? compassEnabled ? handleCompassModeClose : handleCompassModeStart
-            : compassEnabled ? deviceHeading.stop : deviceHeading.start,
-        status: deviceHeading.status,
-        heading: deviceHeading.heading,
-        lowAccuracy: deviceHeading.lowAccuracy,
-        error: deviceHeading.error,
-        isSupported: deviceHeading.isSupported,
-    };
-
     const handleSearchFocus = useCallback(() => {
         if (isMobileViewport) setMobileSheetLevel('expanded');
         if (searchResults.length > 0) setShowResults(true);
@@ -283,9 +261,13 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         setDebugMode(writeStoredDebugMode(enabled));
     }, []);
 
+    const handleBuildingsEnabledChange = useCallback((enabled: boolean) => {
+        setBuildingsEnabled(writeStoredBuildingsEnabled(enabled));
+    }, []);
+
     // Street View リンクは検証用なので、設定でデバッグモードを ON にしたときだけ出す。
     const streetViewBlock = debugMode && selectedLocation ? (
-        <div className="mt-3 border-t border-white/10 pt-3">
+        <div>
             <a
                 href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedLocation.lat},${selectedLocation.lng}`}
                 target="_blank"
@@ -302,223 +284,191 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     ) : null;
 
     return (
-        <div className="relative h-full w-full text-white">
-            <div ref={containerRef} className="h-full w-full touch-none" />
-            <UserLocationMarker
-                map={map}
-                position={userPosition}
-                accuracy={userAccuracy}
-                compassActive={deviceHeading.status === 'active'}
-                heading={deviceHeading.heading}
-                mapBearing={mapBearing}
-            />
-
-            {!isPostMode && (
-                <div className={`absolute left-4 top-[calc(16px+env(safe-area-inset-top))] z-[4500] transition-[left] duration-300 ${isDesktopLayerMenuOpen ? 'md:left-[352px]' : ''}`}>
-                    <MiniCompass
+        // コンパスモード中は縦に 2 分割（上: コンパス、下: 地図）。地図の DOM は作り直さず、枠の高さだけ変える
+        <div className="flex h-full w-full flex-col text-white">
+            {isCompassModeOpen && (
+                <div className="relative h-1/2 shrink-0 border-b border-white/10">
+                    <CompassMode
                         data={compassViewModel}
-                        rotation={rotation}
-                        range={maxDistance}
                         isLoading={compassIsSampling}
-                        onClick={handleCompassModeStart}
+                        range={maxDistance}
+                        onRangeChange={setMaxDistance}
+                        status={deviceHeading.status}
+                        heading={deviceHeading.heading}
+                        lowAccuracy={deviceHeading.lowAccuracy}
+                        error={selectedLocation ? samplingError : compassAnalysis.error}
+                        isSupported={deviceHeading.isSupported}
+                        onClose={handleCompassModeClose}
                     />
                 </div>
             )}
+            <div className="relative min-h-0 flex-1">
+                <div ref={containerRef} className="h-full w-full touch-none" />
+                <UserLocationMarker
+                    map={map}
+                    position={userPosition}
+                    accuracy={userAccuracy}
+                    compassActive={deviceHeading.status === 'active'}
+                    heading={deviceHeading.heading}
+                    mapBearing={mapBearing}
+                />
 
-            <MapModeToggle
-                mode={mode}
-                onModeChange={onModeChange}
-                className="absolute right-4 top-[calc(16px+env(safe-area-inset-top))] z-[5000]"
-            />
-
-            <AppMenu
-                isOpen={isMenuOpen}
-                onClose={() => setIsMenuOpen(false)}
-                displayName={MENU_PROFILE.displayName}
-                memberId={MENU_PROFILE.memberId}
-                foundCount={MENU_PROFILE.foundCount}
-                favoriteCount={MENU_PROFILE.favoriteCount}
-                postCount={posts.length}
-                onViewPosts={() => onModeChange('analyze')}
-                panelView={panelView}
-                onPanelViewChange={handlePanelViewChange}
-                debugMode={debugMode}
-                onDebugModeChange={handleDebugModeChange}
-            />
-
-            <div className="pointer-events-none absolute left-4 right-4 top-[calc(84px+env(safe-area-inset-top))] z-[7000] flex flex-col gap-2 md:left-auto md:right-4 md:w-[520px]">
-                {locateError && (
-                    <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-full border border-white/20 bg-red-500/95 px-4 py-2 text-xs font-bold text-white shadow-lg">
-                        <span>{locateError}</span>
-                        <button
-                            type="button"
-                            onClick={() => setLocateError(null)}
-                            className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/20"
-                            aria-label="エラーを閉じる"
-                        >
-                            ✕
-                        </button>
+                {/* ミニコンパスは探索・投稿の両モードで出す（分割表示中は上半分に本体があるので隠す） */}
+                {!isCompassModeOpen && (
+                    <div className={`absolute left-4 top-[calc(16px+env(safe-area-inset-top))] z-[4500] transition-[left] duration-300 ${isDesktopLayerMenuOpen ? 'md:left-[352px]' : ''}`}>
+                        <MiniCompass
+                            data={compassViewModel}
+                            rotation={rotation}
+                            range={maxDistance}
+                            isLoading={compassIsSampling}
+                            onClick={handleCompassModeStart}
+                        />
                     </div>
                 )}
-            </div>
 
-            <LayerMenu
-                isOpen={isLayerMenuOpen}
-                onToggle={handleLayerMenuToggle}
-                mobileLevel={isMobileViewport ? mobileSheetLevel : undefined}
-            >
-                <div className="flex h-full min-h-0 flex-col bg-transparent text-white">
-                    <div className="shrink-0 border-b border-white/10 px-3 pb-3 pt-1 md:p-4">
-                        <div className="mb-2 hidden items-center justify-between gap-2 md:flex">
-                            <div>
-                                <p className="text-[10px] font-semibold tracking-[0.18em] text-white/40">{isPostMode ? 'POSTS' : 'EXPLORE'}</p>
-                                <p className="mt-1 text-sm font-semibold text-white/85">{isPostMode ? '夜景の投稿' : '夜景を探す'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setIsMenuOpen(true)}
-                            aria-label="メニューを開く"
-                            title="メニュー"
-                            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-                        >
-                            <User className="h-5 w-5" aria-hidden="true" />
-                        </button>
-                        <SearchField
-                            searchQuery={searchQuery}
-                            onSearchChange={setSearchQuery}
-                            onSearchSubmit={() => {
-                                if (isMobileViewport) setMobileSheetLevel('expanded');
-                                void handleSearch(searchQuery);
-                            }}
-                            isSearching={isSearching}
-                            searchResults={searchResults}
-                            showResults={showResults}
-                            onSelectResult={handleSelectResult}
-                            onCloseResults={() => setShowResults(false)}
-                            onFocusSearch={handleSearchFocus}
-                            variant={isMobileViewport ? 'sheet' : 'side'}
-                        />
-                        </div>
-                    </div>
+                {!isCompassModeOpen && (
+                    <MapModeToggle
+                        mode={mode}
+                        onModeChange={onModeChange}
+                        className="absolute right-4 top-[calc(16px+env(safe-area-inset-top))] z-[5000]"
+                    />
+                )}
 
-                    {isPostMode && (!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
-                        <div className="min-h-0 flex-1 overflow-y-auto">
-                            <PostListPanel
-                                posts={posts}
-                                onPostClick={(post) => {
-                                    map?.flyTo({ center: [post.location.lng, post.location.lat], zoom: 16, duration: 1200 });
-                                    if (isMobileViewport) setMobileSheetLevel('collapsed');
-                                }}
-                            />
+                <AppMenu
+                    isOpen={isMenuOpen}
+                    onClose={() => setIsMenuOpen(false)}
+                    displayName={MENU_PROFILE.displayName}
+                    memberId={MENU_PROFILE.memberId}
+                    foundCount={MENU_PROFILE.foundCount}
+                    favoriteCount={MENU_PROFILE.favoriteCount}
+                    postCount={posts.length}
+                    onViewPosts={() => onModeChange('analyze')}
+                    panelView={panelView}
+                    onPanelViewChange={handlePanelViewChange}
+                    debugMode={debugMode}
+                    onDebugModeChange={handleDebugModeChange}
+                    buildingsEnabled={buildingsEnabled}
+                    onBuildingsEnabledChange={handleBuildingsEnabledChange}
+                />
+
+                <div className="pointer-events-none absolute left-4 right-4 top-[calc(84px+env(safe-area-inset-top))] z-[7000] flex flex-col gap-2 md:left-auto md:right-4 md:w-[520px]">
+                    {locateError && (
+                        <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-full border border-white/20 bg-red-500/95 px-4 py-2 text-xs font-bold text-white shadow-lg">
+                            <span>{locateError}</span>
+                            <button
+                                type="button"
+                                onClick={() => setLocateError(null)}
+                                className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/20"
+                                aria-label="エラーを閉じる"
+                            >
+                                ✕
+                            </button>
                         </div>
                     )}
+                </div>
 
-                    {!isPostMode && (!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
-                        <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(24px+env(safe-area-inset-bottom))]">
-                            <button type="button" onClick={() => setMobileSheetLevel((level) => level === 'medium' ? 'expanded' : 'medium')} className="flex w-full items-center justify-between gap-3 text-left">
-                                <span>
-                                    <span className="block text-[10px] font-semibold tracking-[0.18em] text-white/40">DIRECTION &amp; DISTANCE</span>
-                                    <span className="mt-1 block text-base font-semibold text-white/90">方向・距離</span>
-                                </span>
-                                <span className="text-xl text-white/45" aria-hidden="true">›</span>
-                            </button>
-                            <p className="mt-1 text-[11px] text-white/45">{currentPanelViewLabel} · Range {maxDistance >= 1000 ? '1km' : `${maxDistance}m`}</p>
+                {/* コンパスとの分割表示中は、地図側を広く使うためシート／サイドパネルを隠す */}
+                {!isCompassModeOpen && (
+                    <LayerMenu
+                        isOpen={isLayerMenuOpen}
+                        onToggle={handleLayerMenuToggle}
+                        mobileLevel={isMobileViewport ? mobileSheetLevel : undefined}
+                    >
+                        <div className="flex h-full min-h-0 flex-col bg-transparent text-white">
+                            <div className="shrink-0 border-b border-white/10 px-3 pb-3 pt-1 md:p-4">
+                                <div className="mb-2 hidden items-center justify-between gap-2 md:flex">
+                                    <div>
+                                        <p className="text-[10px] font-semibold tracking-[0.18em] text-white/40">{isPostMode ? 'POSTS' : 'EXPLORE'}</p>
+                                        <p className="mt-1 text-sm font-semibold text-white/85">{isPostMode ? '夜景の投稿' : '夜景を探す'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMenuOpen(true)}
+                                    aria-label="メニューを開く"
+                                    title="メニュー"
+                                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                                >
+                                    <User className="h-5 w-5" aria-hidden="true" />
+                                </button>
+                                <SearchField
+                                    searchQuery={searchQuery}
+                                    onSearchChange={setSearchQuery}
+                                    onSearchSubmit={() => {
+                                        if (isMobileViewport) setMobileSheetLevel('expanded');
+                                        void handleSearch(searchQuery);
+                                    }}
+                                    isSearching={isSearching}
+                                    searchResults={searchResults}
+                                    showResults={showResults}
+                                    onSelectResult={handleSelectResult}
+                                    onCloseResults={() => setShowResults(false)}
+                                    onFocusSearch={handleSearchFocus}
+                                    variant={isMobileViewport ? 'sheet' : 'side'}
+                                />
+                                </div>
+                            </div>
 
-                            {(panelView === 'field' || panelView === 'polar') && (
-                                <div className="mt-4">
-                                    <PrototypePanel
-                                        data={viewModel}
-                                        type={panelView}
-                                        isUpdating={isSampling}
-                                        range={maxDistance}
-                                        onRangeChange={setMaxDistance}
-                                        rotation={rotation}
-                                        compass={compassControl}
-                                        hasSelection={selectedLocation !== null}
-                                        error={samplingError}
-                                        status={panelStatus}
-                                    >
-                                        {streetViewBlock && <div className="rounded-2xl border border-white/10 bg-zinc-950/90 px-3 pb-3">{streetViewBlock}</div>}
-                                    </PrototypePanel>
+                            {isPostMode && (!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
+                                <div className="min-h-0 flex-1 overflow-y-auto">
+                                    <PostListPanel
+                                        posts={posts}
+                                        onPostClick={(post) => {
+                                            map?.flyTo({ center: [post.location.lng, post.location.lat], zoom: 16, duration: 1200 });
+                                            if (isMobileViewport) setMobileSheetLevel('collapsed');
+                                        }}
+                                    />
                                 </div>
                             )}
 
-                            {(panelView === 'classicField' || panelView === 'classicPolar') && (
-                                <ClassicPanels
-                                    view={panelView}
-                                    directionPeaks={directionPeaks}
-                                    potentialPoints={potentialPoints}
-                                    maxDistance={maxDistance}
-                                    onRangeChange={setMaxDistance}
-                                    rotation={rotation}
-                                    compass={compassControl}
-                                    status={panelStatus}
-                                    error={samplingError}
-                                    hasSelection={selectedLocation !== null}
-                                    streetViewBlock={streetViewBlock}
-                                />
+                            {/* 探索モードのシートは検索だけ。方向・距離の分析はミニコンパス（コンパスモード）で見る。
+                                デバッグモードのときだけ、選択地点の Street View リンクを出す */}
+                            {!isPostMode && streetViewBlock && (!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
+                                <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-3">{streetViewBlock}</div>
                             )}
-
-                            <p className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-[11px] leading-relaxed text-white/45">色が明るいエリアほど、夜景を見つけられる可能性が高い場所です。表示モードやレイヤーは 右下の地図ボタンから切り替えられます。</p>
                         </div>
-                    )}
-                </div>
-            </LayerMenu>
+                    </LayerMenu>
+                )}
 
-            {/* シート最大時はボタン列が右上のモード切替と重なるので隠す */}
-            {!(isMobileViewport && mobileSheetLevel === 'expanded') && (
-            <MapControlStack
-                onLocate={handleLocate}
-                onOpenMapModes={() => setIsMapModesOpen(true)}
-                isMapModesOpen={isMapModesOpen}
-                style={isMobileViewport ? { bottom: MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] } : undefined}
-                className="absolute right-4 z-[4500] md:bottom-8 md:right-8"
-            />
-            )}
-
-            {isPostMode && (
-                <PostComposer
-                    map={map}
-                    currentLocation={currentLocation}
-                    onRequestLocation={startUserLocation}
-                    onPosted={reloadPosts}
-                    style={{ bottom: `calc(${isMobileViewport ? MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] : '32px'} + ${CONTROL_STACK_HEIGHT})` }}
+                {/* シート最大時はボタン列が右上のモード切替と重なるので隠す */}
+                {(isCompassModeOpen || !(isMobileViewport && mobileSheetLevel === 'expanded')) && (
+                <MapControlStack
+                    onLocate={handleLocate}
+                    onOpenMapModes={() => setIsMapModesOpen(true)}
+                    isMapModesOpen={isMapModesOpen}
+                    style={isMobileViewport ? { bottom: isCompassModeOpen ? SPLIT_CONTROL_BOTTOM : MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] } : undefined}
+                    className="absolute right-4 z-[4500] md:bottom-8 md:right-8"
                 />
-            )}
+                )}
 
-            <MapModesModal
-                isOpen={isMapModesOpen}
-                onClose={() => setIsMapModesOpen(false)}
-                potentialEnabled={potentialEnabled}
-                setPotentialEnabled={setPotentialEnabled}
-                aerialEnabled={aerialEnabled}
-                setAerialEnabled={setAerialEnabled}
-                potentialOpacity={potentialOpacity}
-                setPotentialOpacity={setPotentialOpacity}
-            />
+                {isPostMode && (
+                    <PostComposer
+                        map={map}
+                        currentLocation={currentLocation}
+                        onRequestLocation={startUserLocation}
+                        onPosted={reloadPosts}
+                        style={{ bottom: `calc(${isMobileViewport ? MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] : '32px'} + ${CONTROL_STACK_HEIGHT})` }}
+                    />
+                )}
 
-            {isCompassModeOpen && (
-                <CompassMode
-                    data={compassViewModel}
-                    isLoading={compassIsSampling}
-                    range={maxDistance}
-                    onRangeChange={setMaxDistance}
-                    status={deviceHeading.status}
-                    heading={deviceHeading.heading}
-                    lowAccuracy={deviceHeading.lowAccuracy}
-                    error={selectedLocation ? samplingError : compassAnalysis.error}
-                    isSupported={deviceHeading.isSupported}
-                    onClose={handleCompassModeClose}
+                <MapModesModal
+                    isOpen={isMapModesOpen}
+                    onClose={() => setIsMapModesOpen(false)}
+                    potentialEnabled={potentialEnabled}
+                    setPotentialEnabled={setPotentialEnabled}
+                    aerialEnabled={aerialEnabled}
+                    setAerialEnabled={setAerialEnabled}
+                    potentialOpacity={potentialOpacity}
+                    setPotentialOpacity={setPotentialOpacity}
                 />
-            )}
 
-            {!isLoaded && (
-                <div className="absolute inset-0 z-[7000] grid place-items-center bg-black text-sm text-white/60">
-                    地図を読み込んでいます…
-                </div>
-            )}
+                {!isLoaded && (
+                    <div className="absolute inset-0 z-[7000] grid place-items-center bg-black text-sm text-white/60">
+                        地図を読み込んでいます…
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

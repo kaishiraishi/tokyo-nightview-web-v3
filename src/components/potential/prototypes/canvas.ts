@@ -5,6 +5,9 @@ import { drawCompassLabels as drawSharedCompassLabels } from '../compassCanvas';
 export const CANVAS_SIZE = 300;
 export const CANVAS_BACKGROUND = '#080b10';
 export const CENTER = CANVAS_SIZE / 2;
+// Polar Heatmap の半径方向: INNER → OUTER が距離 0 → range。CompassMode の縮尺バーもこの比率で長さを決める
+export const POLAR_INNER_RADIUS = 14;
+export const POLAR_OUTER_RADIUS = 122;
 
 export function bearingToRadians(bearing: number) {
     return ((bearing - 90) * Math.PI) / 180;

@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
 import { Layers, X } from '../ui/icons';
+import aerialThumbnail from '../../assets/map-modes/aerial.webp';
+import potentialThumbnail from '../../assets/map-modes/potential.webp';
+import standardThumbnail from '../../assets/map-modes/standard.webp';
 
 type MapModeId = 'standard' | 'potential' | 'aerial';
 
@@ -14,44 +17,34 @@ export type MapModesModalProps = {
     setPotentialOpacity: (opacity: number) => void;
 };
 
-const MODES: Array<{ id: MapModeId; label: string; className: string }> = [
-    { id: 'standard', label: '標準', className: 'bg-[radial-gradient(circle_at_65%_35%,rgba(255,255,255,0.18),transparent_25%),linear-gradient(145deg,#2a3040,#11151f_60%,#080a10)]' },
-    { id: 'potential', label: 'ポテンシャル', className: 'bg-[linear-gradient(145deg,#19152f_4%,#4f236c_38%,#bd4b46_68%,#ffa600_86%,#fff078)]' },
-    { id: 'aerial', label: '航空写真', className: 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(140,170,135,0.72),transparent_32%),linear-gradient(145deg,#384d43,#887c67_52%,#252d2c)]' },
+// サムネイルはこのアプリの地図を各モードで撮影したもの（川崎市多摩区付近、z13）。地図の見た目を変えたら撮り直す
+const MODES: Array<{ id: MapModeId; label: string; thumbnail: string }> = [
+    { id: 'standard', label: '標準', thumbnail: standardThumbnail },
+    { id: 'potential', label: 'ポテンシャル', thumbnail: potentialThumbnail },
+    { id: 'aerial', label: '航空写真', thumbnail: aerialThumbnail },
 ];
 
-function activeMode(potentialEnabled: boolean, aerialEnabled: boolean): MapModeId | null {
-    const active = [potentialEnabled, aerialEnabled].filter(Boolean).length;
-    if (active === 0) return 'standard';
-    if (active !== 1) return null;
+// モードは 1 つだけ選ぶ（Apple マップの Map Modes と同じ）。航空写真を選ぶとポテンシャルは消える
+function activeMode(potentialEnabled: boolean, aerialEnabled: boolean): MapModeId {
+    if (aerialEnabled) return 'aerial';
     if (potentialEnabled) return 'potential';
-    return 'aerial';
+    return 'standard';
 }
 
 function ModeThumbnail({ mode, selected, onSelect }: { mode: (typeof MODES)[number]; selected: boolean; onSelect: () => void }) {
     return (
-        <button type="button" onClick={onSelect} aria-pressed={selected} className="min-w-0 text-left">
+        <button type="button" onClick={onSelect} aria-pressed={selected} className="group min-w-0 text-left">
             <span
-                className={`block aspect-[1.18] w-full rounded-2xl border shadow-inner transition-all ${mode.className} ${selected ? 'border-violet-200/90 ring-2 ring-violet-300/30' : 'border-white/10 hover:border-white/30'}`}
-            />
-            <span className={`mt-2 block truncate text-center text-[11px] ${selected ? 'font-semibold text-white' : 'text-white/55'}`}>{mode.label}</span>
-        </button>
-    );
-}
-
-function SwitchRow({ label, enabled, onChange }: { label: string; enabled: boolean; onChange: (enabled: boolean) => void }) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            onClick={() => onChange(!enabled)}
-            className="flex min-h-12 w-full items-center justify-between gap-3 border-b border-white/10 px-3 text-left last:border-b-0"
-        >
-            <span className="text-sm text-white/85">{label}</span>
-            <span className={`relative h-7 w-12 shrink-0 rounded-full p-1 transition-colors ${enabled ? 'bg-violet-500/90' : 'bg-white/15'}`}>
-                <span className={`block h-5 w-5 rounded-full bg-white shadow-md transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                className={`block overflow-hidden rounded-[20px] p-[3px] transition-all ${selected ? 'bg-violet-300/90' : 'bg-transparent'}`}
+            >
+                <img
+                    src={mode.thumbnail}
+                    alt=""
+                    className={`block aspect-square w-full rounded-[17px] border object-cover transition-opacity ${selected ? 'border-black/40' : 'border-white/15 opacity-85 group-hover:opacity-100'}`}
+                    draggable={false}
+                />
             </span>
+            <span className={`mt-2 block truncate text-center text-xs ${selected ? 'font-semibold text-white' : 'text-white/60'}`}>{mode.label}</span>
         </button>
     );
 }
@@ -108,12 +101,7 @@ export function MapModesModal({
                     ))}
                 </div>
 
-                <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">
-                    <SwitchRow label="夜景ポテンシャル" enabled={potentialEnabled} onChange={setPotentialEnabled} />
-                    <SwitchRow label="航空写真" enabled={aerialEnabled} onChange={setAerialEnabled} />
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-3">
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-3">
                     <div className="flex items-center justify-between gap-3 text-xs text-white/65">
                         <label htmlFor="map-modes-potential-opacity">ポテンシャルの不透明度</label>
                         <span className="tabular-nums text-white/45">{Math.round(potentialOpacity * 100)}%</span>

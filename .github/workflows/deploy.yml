@@ -23,6 +23,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run build
         env:
           # Inject secrets from repo settings
@@ -32,8 +33,13 @@ jobs:
           VITE_CARTO_STYLE_DARK: ${{ secrets.VITE_CARTO_STYLE_DARK }}
           VITE_CARTO_STYLE_LIGHT: ${{ secrets.VITE_CARTO_STYLE_LIGHT }}
       
-      - name: Verify Tiles
-        run: ls -lah dist/viirs_heat_tiles | head
+      # ポテンシャルのタイル（閾値処理済みの WebP）は git 管理。欠けたまま公開しない
+      - name: Verify tiles
+        run: |
+          count=$(find dist/NightViewPotential_tiles -name '*.webp' | wc -l)
+          echo "potential tiles: $count"
+          test "$count" -ge 4900
+          test -f dist/manifest.webmanifest
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
