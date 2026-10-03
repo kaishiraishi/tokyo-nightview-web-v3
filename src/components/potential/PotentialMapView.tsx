@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
-import { User } from '../ui/icons';
 import { LayerMenu } from '../layout/LayerMenu';
-import { SearchField } from '../layout/SearchField';
 import { FloatingSearchBar } from '../layout/FloatingSearchBar';
 import { createStreetViewPopup } from './streetViewPopup';
 import { MOBILE_SHEET_CONTROL_BOTTOMS, nextMobileSheetLevel, type MobileSheetLevel } from '../layout/mobileSheet';
@@ -66,6 +64,8 @@ const SEARCH_RESULT_ZOOM = 15;
 const SEARCH_BAR_LEFT = 'calc(88px + env(safe-area-inset-left))';
 const MOBILE_SEARCH_BAR_RIGHT = 'calc(16px + var(--btn-h) * 2 + 18px + env(safe-area-inset-right))';
 const DESKTOP_SEARCH_WIDTH = 360;
+// PC の投稿モードで左パネルが開いているときは、ミニコンパス（left 352px）の右に置く: 352 + 64 + 8
+const DESKTOP_POST_SEARCH_BAR_LEFT = 'calc(424px + env(safe-area-inset-left))';
 
 // コンパスモードのカードは地図の上に浮かべる。横長は左（地図の幅の割合）、縦長は上（地図の高さの割合）。
 // 地図側は、カードに隠れる分を避けて距離リングを収める（useRangeRings の obscured）
@@ -463,11 +463,10 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         return () => window.removeEventListener('pointerdown', handleFirstPointer, { capture: true });
     }, [deviceHeadingStatus, headingSensorWanted, startDeviceHeading]);
 
-    // シートがあるのは投稿モードだけ。探索モードの検索バーは結果を自分の上下に出すので、シートは触らない
+    // 検索バーは上の帯にあり、結果を自分の下に出すので、シートは触らない
     const handleSearchFocus = useCallback(() => {
-        if (isMobileViewport && isPostMode) setMobileSheetLevel('expanded');
         if (searchResults.length > 0) setShowResults(true);
-    }, [isMobileViewport, isPostMode, searchResults.length]);
+    }, [searchResults.length]);
 
     // 検索結果の一覧は、地図に触れたら閉じる（タッチ端末では一覧の onMouseLeave が起きないことがあるため）
     useEffect(() => {
@@ -482,9 +481,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     }, [map, showResults]);
 
     const handleSearchSubmit = useCallback(() => {
-        if (isMobileViewport && isPostMode) setMobileSheetLevel('expanded');
         void handleSearch(searchQuery);
-    }, [handleSearch, isMobileViewport, isPostMode, searchQuery]);
+    }, [handleSearch, searchQuery]);
 
     const handleMobileSheetToggle = useCallback(() => {
         setMobileSheetLevel((level) => nextMobileSheetLevel(level));
@@ -637,7 +635,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
 
                 {/* 探索モードは面を持たない浮かぶ検索バー。上の帯のミニコンパスとモード切替のあいだに置き、縦の中心を揃える。
                     検索結果は、スマホでは画面幅いっぱい、PC ではバーの幅で下に開く。コンパスモード中は地図側を広く使うため隠す */}
-                {!isCompassModeOpen && !isPostMode && (
+                {!isCompassModeOpen && (
                     <FloatingSearchBar
                         onOpenMenu={() => setIsMenuOpen(true)}
                         searchQuery={searchQuery}
@@ -650,7 +648,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         onCloseResults={() => setShowResults(false)}
                         onFocusSearch={handleSearchFocus}
                         resultsPlacement={isMobileViewport ? 'below-screen' : 'below'}
-                        style={isMobileViewport ? { left: SEARCH_BAR_LEFT, right: MOBILE_SEARCH_BAR_RIGHT } : { left: SEARCH_BAR_LEFT, width: DESKTOP_SEARCH_WIDTH }}
+                        style={isMobileViewport
+                            ? { left: SEARCH_BAR_LEFT, right: MOBILE_SEARCH_BAR_RIGHT }
+                            : { left: isPostMode && isDesktopLayerMenuOpen ? DESKTOP_POST_SEARCH_BAR_LEFT : SEARCH_BAR_LEFT, width: DESKTOP_SEARCH_WIDTH }}
                         className="absolute top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[4600] animate-ui-drop"
                     />
                 )}
@@ -663,36 +663,10 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         mobileLevel={isMobileViewport ? mobileSheetLevel : undefined}
                     >
                         <div className="flex h-full min-h-0 flex-col bg-transparent text-white">
-                            <div className="shrink-0 border-b border-white/10 px-3 pb-3 pt-1 md:p-4">
-                                <div className="mb-2 hidden items-center justify-between gap-2 md:flex">
-                                    <div>
-                                        <p className="text-[10px] font-semibold tracking-[0.18em] text-white/40">POSTS</p>
-                                        <p className="mt-1 text-sm font-semibold text-white/85">夜景の投稿</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsMenuOpen(true)}
-                                    aria-label="メニューを開く"
-                                    title="メニュー"
-                                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-                                >
-                                    <User className="h-5 w-5" aria-hidden="true" />
-                                </button>
-                                <SearchField
-                                    searchQuery={searchQuery}
-                                    onSearchChange={handleSearchChange}
-                                    onSearchSubmit={handleSearchSubmit}
-                                    isSearching={isSearching}
-                                    searchResults={searchResults}
-                                    showResults={showResults}
-                                    onSelectResult={handleSelectResult}
-                                    onCloseResults={() => setShowResults(false)}
-                                    onFocusSearch={handleSearchFocus}
-                                    variant={isMobileViewport ? 'sheet' : 'side'}
-                                />
-                                </div>
+                            {/* 検索とメニューは上の帯の検索バーにあるので、ここは見出しと投稿の一覧だけ */}
+                            <div className="shrink-0 border-b border-white/10 px-4 pb-3 pt-1 md:p-4">
+                                <p className="text-[10px] font-semibold tracking-[0.18em] text-white/40">POSTS</p>
+                                <p className="mt-1 text-sm font-semibold text-white/85">夜景の投稿</p>
                             </div>
 
                             {(!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
