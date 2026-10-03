@@ -123,8 +123,8 @@ function CompassBezel({ rotation, profile }: { rotation: number; profile: number
                     />
                 );
             })}
-            {/* 方位は読み取り値（「東 72°」など）と同じ日本語にし、ヒートマップの上でも読めるよう暗い縁取りを付ける */}
-            {(['北', '東', '南', '西'] as const).map((label, index) => {
+            {/* ヒートマップの上でも読めるよう、大きめの文字に暗い縁取りを付ける */}
+            {(['N', 'E', 'S', 'W'] as const).map((label, index) => {
                 const radians = (index * Math.PI) / 2;
                 const x = Math.sin(radians) * LABEL_RADIUS;
                 const y = -Math.cos(radians) * LABEL_RADIUS;
@@ -138,7 +138,7 @@ function CompassBezel({ rotation, profile }: { rotation: number; profile: number
                         dominantBaseline="central"
                         fontSize="10"
                         fontWeight={700}
-                        fill={label === '北' ? 'rgb(248,113,113)' : 'rgba(255,255,255,0.92)'}
+                        fill={label === 'N' ? 'rgb(248,113,113)' : 'rgba(255,255,255,0.92)'}
                         stroke="rgba(5,7,11,0.85)"
                         strokeWidth="2.5"
                         paintOrder="stroke"
