@@ -56,12 +56,14 @@ function TargetMarker({ target, range, rotation }: { target: PolarPick; range: n
 
 const TICKS = Array.from({ length: 72 }, (_, index) => index * 5);
 
-function statusMessage(status: DeviceHeadingStatus, isSupported: boolean, error: string | null) {
+function statusMessage(status: DeviceHeadingStatus, isSupported: boolean, error: string | null, heading: number | null) {
     if (!isSupported || status === 'unsupported') return error ?? 'この端末ではコンパスを利用できません';
     if (status === 'requesting') return '方位センサーの許可を確認中…';
     if (status === 'denied') return error ?? 'コンパスの利用が許可されていません';
     if (status === 'error') return error ?? 'コンパスを開始できませんでした';
     if (status === 'off') return 'コンパスは停止中です';
+    // 画面の上（前方の扇形）が指している方角。文字盤が回っても、今どちらを向いているかを文字で分かるようにする
+    if (heading !== null) return `向いている方角 ${compassName(heading)} ${Math.round(heading)}°`;
     return '端末の向きに連動中';
 }
 
@@ -121,7 +123,8 @@ function CompassBezel({ rotation, profile }: { rotation: number; profile: number
                     />
                 );
             })}
-            {(['N', 'E', 'S', 'W'] as const).map((label, index) => {
+            {/* 方位は読み取り値（「東 72°」など）と同じ日本語にし、ヒートマップの上でも読めるよう暗い縁取りを付ける */}
+            {(['北', '東', '南', '西'] as const).map((label, index) => {
                 const radians = (index * Math.PI) / 2;
                 const x = Math.sin(radians) * LABEL_RADIUS;
                 const y = -Math.cos(radians) * LABEL_RADIUS;
@@ -133,9 +136,12 @@ function CompassBezel({ rotation, profile }: { rotation: number; profile: number
                         transform={`rotate(${rotation} ${x} ${y})`}
                         textAnchor="middle"
                         dominantBaseline="central"
-                        fontSize="7"
-                        fontWeight={label === 'N' ? 700 : 600}
-                        fill={label === 'N' ? 'rgba(248,113,113,0.95)' : 'rgba(255,255,255,0.6)'}
+                        fontSize="10"
+                        fontWeight={700}
+                        fill={label === '北' ? 'rgb(248,113,113)' : 'rgba(255,255,255,0.92)'}
+                        stroke="rgba(5,7,11,0.85)"
+                        strokeWidth="2.5"
+                        paintOrder="stroke"
                     >
                         {label}
                     </text>
@@ -209,7 +215,7 @@ export function CompassMode({
         : target ? readoutText(target.bearing, target.distance, target.cell) : null;
     const message = lowAccuracy && status === 'active'
         ? '精度が低い状態です。端末を8の字に振って補正してください'
-        : error && !data && !isLoading ? error : statusMessage(status, isSupported, error);
+        : error && !data && !isLoading ? error : statusMessage(status, isSupported, error, heading);
 
     return (
         // 地図の上に浮かべるカード（位置と大きさは PotentialMapView 側）。地図は全面のまま、カードの外側から透けて見える

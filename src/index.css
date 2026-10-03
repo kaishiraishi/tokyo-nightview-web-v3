@@ -228,7 +228,7 @@ body {
 .search-popup-title { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; color: rgba(255, 255, 255, 0.92); }
 .search-popup-favorite { display: flex; min-height: 44px; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid rgba(196, 181, 253, 0.35); background: rgba(255, 255, 255, 0.04); padding: 8px 12px; font-size: 12px; font-weight: 600; color: rgb(237, 233, 254); cursor: pointer; }
 .search-popup-favorite:hover { background: rgba(196, 181, 253, 0.12); }
-.search-popup-favorite[aria-pressed="true"] { border-color: transparent; background: rgba(109, 40, 217, 0.85); color: #fff; }
+.search-popup-favorite[data-favorite="true"] { border-color: transparent; background: rgba(109, 40, 217, 0.85); color: #fff; }
 .search-popup-favorite:focus-visible { outline: 2px solid rgba(196, 181, 253, 0.8); outline-offset: 2px; }
 .pixel-inspector-strong { font-size: 13px; font-weight: 700; color: #fff; }
 .pixel-inspector-note { margin-top: 4px; font-size: 10px; color: rgba(255, 255, 255, 0.4); }

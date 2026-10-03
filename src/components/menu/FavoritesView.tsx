@@ -33,7 +33,7 @@ export function FavoritesView({ favorites, onSelect, onRemove, onAddCurrentLocat
                 <LocateFixed size={18} aria-hidden="true" />
                 {isLocating ? '現在地を取得しています…' : '現在地をお気に入りに追加'}
             </button>
-            {locateError && <p role="status" className="px-1 text-[11px] leading-relaxed text-red-300/90">{locateError}</p>}
+            {locateError && <p role="alert" className="px-1 text-[11px] leading-relaxed text-red-300/90">{locateError}</p>}
 
             {favorites.length === 0 ? (
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-5 py-6 text-center">

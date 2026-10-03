@@ -70,6 +70,8 @@
 - 配色: 紫はネオンにせず落ち着いた灯りとして扱う。塗りは選択中・主ボタンに限り、淡い紫は枠・フォーカスに使う。青は航空写真などレイヤー状態だけ、赤はエラーと北方向だけ。
 - 表示モード（右下の地図ボタン → `MapModesModal`）: 標準 / ポテンシャル / 航空写真 から 1 つを選ぶ。下に折りたたみの「夜景ポテンシャルとは」（見かた・コンパスの使い方・注意。算出方法は書かない）（Apple マップの Map Modes 型。航空写真モードは写真の上にポテンシャル層を重ねる。2026-10-03）。サムネイルはアプリの地図を撮影した `src/assets/map-modes/*.webp`（川崎市多摩区付近 z13、地図の見た目を変えたら撮り直す）。不透明度スライダーは常に表示。VIIRS 表示は廃止
 - 投稿モードの下部シート（モバイル）は表示時に下から持ち上がり、サイドパネル（PC）は左から入る（`index.css` の `animate-sheet-rise` / `animate-panel-slide-in`、reduced-motion では無効）
+- メニュー（`AppMenu`、2026-10-03）: お気に入り（件数）・投稿を見る（件数）・はじめてガイド・設定。アカウントがないのでプロフィールや架空の数字は出さない。お気に入りは端末の `localStorage`（`nightview.favorites`、`src/lib/favorites.ts`、`useFavorites`）に保存し、検索結果・お気に入りの白いピンのポップアップ（選んだときに自動で開く）の「お気に入りに追加 / 外す」と、お気に入りページの「現在地をお気に入りに追加」で登録する。一覧から選ぶとその地点へ移動してピンを立て、各行で削除できる。はじめてガイド（`GuideView`）は画面にある操作だけを説明する（算出方法は書かない）
+- コンパスの文字盤の方位は 北/東/南/西（北は赤、暗い縁取り）。向きセンサーが動いている間は、カード上部に「向いている方角 北東 42°」を出す
 - 探索 / 投稿の切替は `MapModeToggle`（地図アイコン = 探索、紫のスパークル = 投稿）。`aria-pressed` で現在の mode を示す。メニューの「投稿」行も投稿モードへ切り替える。
 - 地図のポテンシャル表示は、光っている画素（閾値 0.006 以上）の上位 10%（値 0.0479 以上、`POTENTIAL_DISPLAY_THRESHOLD`）だけを出す表示用タイル `public/NightViewPotential_top10_tiles` を使う（2026-10-03）。コンパスのサンプリングは従来どおり閾値 0.006 のタイルを読む。表示モード画面の「表示する範囲」（上位 10% / すべて、`nightview.potentialScope`、既定は上位 10%）で、地図のタイルを `setPotentialDisplayScope` により切り替えられる。
 - PLATEAU の 3D 建物（`useMapLibre` の `plateau-bldg-extrusion`、第三者がホスティングしている MVT `ysk766.github.io/plateau_tokyo_2023_mvt_lod1`）は、メニュー → 設定 の「3D 建物」スイッチでオン/オフする（`nightview.buildings3d`、既定 ON）。このタイルは tippecanoe の `--drop-densest-as-needed` で密集地の建物が間引かれていて、西新宿の高層ビル街などが欠ける。自前での再生成は検討中
@@ -78,6 +80,8 @@
 - 探索モードでは旧 V2 の ScanControlPanel / 旧探索用 deck.gl UI は使わない。投稿モードでは明示許可された既存 `MapViewExplore` の投稿 UI だけを表示する。
 
 ## Data pipeline
+
+- 対象範囲（2026-10-03）: 東京都・神奈川県・千葉県・埼玉県。地図は範囲外を暗くし、1都3県の外周（淡い紫の実線）と都県境（破線）を引く（`useMapLibre` の `addTargetArea`、`public/target-area.geojson`）。形は国土地理院「地球地図日本」の都道府県界（`dataofjapan/land` の `japan.geojson`、出典の明記が必要）から id 11〜14 を取り出し、島しょ部（南端が北緯 34.8 度未満）と小さな島を除き、shapely で合体して 0.002 度で単純化したもの（`mask` / `area` / `pref` の 3 種類の地物）。ポテンシャルのデータ（タイル）は東経 138.87〜139.92 度までで、千葉県の大部分は含まれない
 
 - 元データ: Float32 GeoTIFF（EPSG:6677）。生成側の入力パスは `scripts/make-potential-tiles.sh` の `IN_TIF`。
 - 生成: `scripts/make-potential-tiles.sh` が (1) EPSG:3857 へ再投影 (2) `scripts/smooth-potential-raster.py` で 90m グリッドをマスク付きガウス平滑化 (3) 色ランプ (4) `gdaldem color-relief` (5) `gdal2tiles.py --xyz` でズーム 10–14 の XYZ PNG を `tiles-work/potential-png/` に出力 (6) `scripts/bake-potential-tiles.py`（numpy + Pillow）が、色ランプの逆引きで値が閾値（0.006）未満のピクセルを透明にし、可逆 WebP として `public/NightViewPotential_tiles/` に書き出す。同じ PNG から、地図の表示用に上位 10%（閾値 0.0479）だけを焼き込んだ `public/NightViewPotential_top10_tiles/` も書き出す（約 0.48MB、4,475 枚が透明）。全面が透明になるタイルも透明な WebP として必ず置く（404 だと MapLibre が親タイルで代用するため）。タイルを作り直したら、生成物をコミットする

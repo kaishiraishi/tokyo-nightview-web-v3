@@ -288,9 +288,11 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const handleSelectFavorite = useCallback((favorite: FavoritePlace) => {
         map?.flyTo({ center: [favorite.lng, favorite.lat], zoom: SEARCH_RESULT_ZOOM, duration: 1200 });
         setSearchQuery(favorite.name);
-        setSearchPlace({ lng: favorite.lng, lat: favorite.lat, name: favorite.name });
+        setSearchPlace({ lng: favorite.lng, lat: favorite.lat, name: favorite.name, revealId: Date.now() });
         setShowResults(false);
-    }, [map]);
+        // 投稿モードのスマホでは、シートが地図とピンを隠さないよう閉じる（検索結果を選んだときと同じ）
+        if (isMobileViewport && isPostMode) setMobileSheetLevel('collapsed');
+    }, [isMobileViewport, isPostMode, map]);
 
     // 「現在地をお気に入りに追加」: 位置がまだなければ取得を始め、届いたときに追加する。取得に失敗したら待つのをやめる
     // （理由は画面上部のエラー表示に出る）
@@ -314,6 +316,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         if (currentLocation) {
             addCurrentLocationFavorite(currentLocation);
             setIsLocatingFavorite(false);
+            setFavoriteLocateError(null);
         } else if (userLocationStatus === 'denied' || userLocationStatus === 'error' || userLocationStatus === 'unsupported') {
             setIsLocatingFavorite(false);
             setFavoriteLocateError(userLocationError ?? '現在地を取得できませんでした');
@@ -325,7 +328,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         map?.flyTo({ center: [result.lng, result.lat], zoom: SEARCH_RESULT_ZOOM, duration: 1200 });
         const name = result.displayName.split(',')[0];
         setSearchQuery(name);
-        setSearchPlace({ lng: result.lng, lat: result.lat, name });
+        setSearchPlace({ lng: result.lng, lat: result.lat, name, revealId: Date.now() });
         setShowResults(false);
         // 投稿モードのシートは検索結果を見せるために広げている。選んだら、飛んだ先の地図が見えるよう閉じる
         if (isMobileViewport && isPostMode) setMobileSheetLevel('collapsed');
@@ -523,7 +526,11 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
 
                 <AppMenu
                     isOpen={isMenuOpen}
-                    onClose={() => setIsMenuOpen(false)}
+                    onClose={() => {
+                        setIsMenuOpen(false);
+                        // 現在地を追加できなかった理由は、その場限りの表示なので閉じたら消す
+                        setFavoriteLocateError(null);
+                    }}
                     postCount={posts.length}
                     favorites={favorites}
                     onSelectFavorite={handleSelectFavorite}

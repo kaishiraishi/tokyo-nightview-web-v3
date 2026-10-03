@@ -224,58 +224,49 @@ function forceJapaneseLabels(map: maplibregl.Map) {
 // ============================================
 // Mask Non-Tokyo Areas
 // ============================================
-function addTokyoMask(map: maplibregl.Map) {
-    const MASK_SOURCE_ID = 'tokyo-mask-source';
-    const MASK_LAYER_ID = 'tokyo-mask-layer';
+// 対象範囲（東京都・神奈川県・千葉県・埼玉県）。範囲外を暗くし、外周と都県境を線で引く。
+// 形は国土地理院「地球地図日本」の都道府県界を 1都3県だけ取り出し、本土のみ・約 200m で単純化したもの
+// （public/target-area.geojson。kind: mask = 範囲外の面 / area = 1都3県を合わせた形 / pref = 各都県の境界）。
+// 作り方は PROJECT.md の「対象範囲」
+const TARGET_AREA_SOURCE_ID = 'target-area';
+const TARGET_AREA_MASK_LAYER_ID = 'target-area-mask';
+const TARGET_AREA_PREF_LAYER_ID = 'target-area-pref';
+const TARGET_AREA_OUTLINE_LAYER_ID = 'target-area-outline';
 
-    const WORLD_BOUNDS = [
-        [-180, -90],
-        [180, -90],
-        [180, 90],
-        [-180, 90],
-        [-180, -90],
-    ];
-
-    // Counter-clockwise for global outer ring (GeoJSON recommendation)
-    // Actually MapLibre usually takes external ring as CCW? Or CW?
-    // Let's stick to standard: Exterior ring CCW, Interior ring CW. The standard is confusing.
-    // Spec says: Exterior ring is CCW.
-
-    // Tokyo Rect (Hole)
-    // [138.9, 35.2] to [140.2, 35.9]
-    // Clockwise for hole
-    const TOKYO_HOLE = [
-        [138.9, 35.2], // SW
-        [138.9, 35.9], // NW
-        [140.2, 35.9], // NE
-        [140.2, 35.2], // SE
-        [138.9, 35.2], // SW
-    ];
-
-    if (!map.getSource(MASK_SOURCE_ID)) {
-        map.addSource(MASK_SOURCE_ID, {
+function addTargetArea(map: maplibregl.Map) {
+    if (!map.getSource(TARGET_AREA_SOURCE_ID)) {
+        map.addSource(TARGET_AREA_SOURCE_ID, {
             type: 'geojson',
-            data: {
-                type: 'Feature',
-                geometry: {
-                    type: 'Polygon',
-                    coordinates: [WORLD_BOUNDS, TOKYO_HOLE],
-                },
-                properties: {},
-            },
+            data: `${import.meta.env.BASE_URL}target-area.geojson`,
+            attribution: '地球地図日本（国土地理院）',
         });
     }
-
-    if (!map.getLayer(MASK_LAYER_ID)) {
+    if (!map.getLayer(TARGET_AREA_MASK_LAYER_ID)) {
         map.addLayer({
-            id: MASK_LAYER_ID,
+            id: TARGET_AREA_MASK_LAYER_ID,
             type: 'fill',
-            source: MASK_SOURCE_ID,
-            layout: {},
-            paint: {
-                'fill-color': '#000000',
-                'fill-opacity': 0.4,
-            },
+            source: TARGET_AREA_SOURCE_ID,
+            filter: ['==', ['get', 'kind'], 'mask'],
+            paint: { 'fill-color': '#000000', 'fill-opacity': 0.4 },
+        });
+    }
+    // 都県境は控えめな破線、1都3県の外周は地図の他の淡い紫（距離リングなど）と同じ色の実線
+    if (!map.getLayer(TARGET_AREA_PREF_LAYER_ID)) {
+        map.addLayer({
+            id: TARGET_AREA_PREF_LAYER_ID,
+            type: 'line',
+            source: TARGET_AREA_SOURCE_ID,
+            filter: ['==', ['get', 'kind'], 'pref'],
+            paint: { 'line-color': '#ffffff', 'line-opacity': 0.28, 'line-width': 1, 'line-dasharray': [3, 3] },
+        });
+    }
+    if (!map.getLayer(TARGET_AREA_OUTLINE_LAYER_ID)) {
+        map.addLayer({
+            id: TARGET_AREA_OUTLINE_LAYER_ID,
+            type: 'line',
+            source: TARGET_AREA_SOURCE_ID,
+            filter: ['==', ['get', 'kind'], 'area'],
+            paint: { 'line-color': '#c4b5fd', 'line-opacity': 0.75, 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.2, 14, 2.2] },
         });
     }
 }
@@ -374,8 +365,8 @@ export function useMapLibre(containerRef: RefObject<HTMLDivElement>) {
             addPotentialLayer(map);
             addAerialPhoto(map);
 
-            // Mask non-Tokyo areas
-            addTokyoMask(map);
+            // 対象範囲（1都3県）の外を暗くし、境界を線で引く
+            addTargetArea(map);
 
             // Apply label fix
             forceJapaneseLabels(map);
@@ -390,8 +381,8 @@ export function useMapLibre(containerRef: RefObject<HTMLDivElement>) {
             addAerialPhoto(map);
             addPlateauExtrusion(map);
 
-            // Mask non-Tokyo areas
-            addTokyoMask(map);
+            // 対象範囲（1都3県）の外を暗くし、境界を線で引く
+            addTargetArea(map);
 
             // Apply label fix
             forceJapaneseLabels(map);
