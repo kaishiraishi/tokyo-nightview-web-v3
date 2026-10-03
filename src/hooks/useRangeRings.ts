@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import maplibregl from 'maplibre-gl';
 import { destinationPoint, type MapLocation } from '../lib/potentialSampler';
 import { formatDistance, RANGE_GUIDE_FRACTIONS } from '../components/potential/prototypes/canvas';
@@ -36,8 +36,9 @@ function ringsFeatureCollection(center: MapLocation, range: number): GeoJSON.Fea
 // コンパスモード中、コンパスの距離ガイド（range の 1/4・1/2・1）と同じ円を地図に重ねる。
 // 円の中心は、コンパスが表示している地点（選択地点、なければ現在地）。
 // 開いたとき・range を変えたときは、外側の円が地図に収まるよう表示範囲を合わせる（コンパスとの縮尺の対応）
-// obscured: コンパスのカードに隠れる辺と、その辺に対する割合。円はカードを避けた見える領域に収める
-export type ObscuredEdge = { edge: 'top' | 'left'; fraction: number };
+// obscured: コンパスのカードに隠れる辺と、そのカードの要素。円はカードを避けた見える領域に収める。
+// カードの大きさは画面幅と縦横比で決まるので、割合ではなく合わせる時点の実寸を測る
+export type ObscuredEdge = { edge: 'top' | 'left'; card: RefObject<HTMLElement | null> };
 
 export function useRangeRings(
     map: maplibregl.Map | null,
@@ -52,7 +53,7 @@ export function useRangeRings(
     const lng = center?.lng;
     const lat = center?.lat;
     const hasCenter = center !== null;
-    const { edge, fraction } = obscured;
+    const { edge, card } = obscured;
 
     useEffect(() => {
         centerRef.current = lng !== undefined && lat !== undefined ? { lng, lat } : null;
@@ -119,10 +120,15 @@ export function useRangeRings(
         });
         // 分割表示で地図の枠が変わった直後なので、サイズを取り直してから合わせる
         map.resize();
-        const container = map.getContainer();
-        const reserved = (edge === 'top' ? container.clientHeight : container.clientWidth) * fraction + CARD_GAP;
+        // カードは地図と同じ親に絶対配置されている。出現アニメーションの拡大を含まない offset 系の値で測る。
+        // カードがまだ無いときは隠れる分なしで合わせる（円が一部カードの下に入るだけで、壊れはしない）
+        const cardElement = card.current;
+        const cardExtent = cardElement
+            ? edge === 'top' ? cardElement.offsetTop + cardElement.offsetHeight : cardElement.offsetLeft + cardElement.offsetWidth
+            : 0;
+        const reserved = cardExtent + CARD_GAP;
         const padding = { top: FIT_PADDING, bottom: FIT_PADDING, left: FIT_PADDING, right: FIT_PADDING };
         padding[edge] += reserved;
         map.fitBounds(bounds, { padding, maxZoom: FIT_MAX_ZOOM, duration: 600 });
-    }, [map, isLoaded, enabled, range, hasCenter, edge, fraction]);
+    }, [map, isLoaded, enabled, range, hasCenter, edge, card]);
 }

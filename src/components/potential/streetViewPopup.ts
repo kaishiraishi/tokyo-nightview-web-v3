@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import type { MapLocation } from '../../lib/potentialSampler';
+import { MAP_PIN_POPUP_OFFSET } from './mapPin';
 
 // デバッグモードのピンを押したときのポップアップ。Google マップの Street View を別タブで開くリンクだけを出す
 // （規約上、Google の画像・API を MapLibre の画面に埋め込まない。Maps Platform ToS §3.2.3(e)）
@@ -19,7 +20,7 @@ export function createStreetViewPopup(location: MapLocation): maplibregl.Popup {
     note.textContent = '画像がない地点では、近くの場所が表示されることがあります。Google マップが別タブで開きます。';
 
     root.append(link, note);
-    // offset は指定しない（Marker.setPopup がピンの形に合わせた位置を付ける）
-    return new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px', className: 'debug-popup' })
+    // 独自のピン（mapPin.ts）の頭の上に出す
+    return new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '280px', className: 'debug-popup', offset: MAP_PIN_POPUP_OFFSET })
         .setDOMContent(root);
 }

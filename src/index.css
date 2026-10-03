@@ -297,3 +297,52 @@ body {
 .search-popup-favorite:focus-visible { outline: 2px solid rgba(196, 181, 253, 0.8); outline-offset: 2px; }
 .pixel-inspector-strong { font-size: 13px; font-weight: 700; color: #fff; }
 .pixel-inspector-note { margin-top: 4px; font-size: 10px; color: rgba(255, 255, 255, 0.4); }
+
+/* 地図のピン（mapPin.ts）。ガラス調の丸い頭（中に色の点）+ 細い軸 + 地面の点。
+   紫 = 選択地点（デバッグ）、白 = 検索結果・お気に入り。寸法を変えたら mapPin.ts の PIN_HEIGHT も合わせる */
+.map-pin {
+    --pin-color: #a78bfa;
+    --pin-glow: rgba(167, 139, 250, 0.55);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
+}
+.map-pin--white {
+    --pin-color: #f5f5f5;
+    --pin-glow: rgba(255, 255, 255, 0.35);
+}
+.map-pin__head {
+    position: relative;
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    border-radius: 9999px;
+    border: 2px solid var(--pin-color);
+    background: rgba(5, 7, 11, 0.85);
+    box-shadow: 0 0 12px var(--pin-glow);
+}
+.map-pin__head::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 10px;
+    height: 10px;
+    border-radius: 9999px;
+    background: var(--pin-color);
+    box-shadow: 0 0 6px var(--pin-glow);
+}
+.map-pin__stem {
+    width: 2px;
+    height: 10px;
+    background: linear-gradient(var(--pin-color), rgba(255, 255, 255, 0.25));
+}
+.map-pin__base {
+    box-sizing: border-box;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--pin-color);
+    border: 1.5px solid rgba(5, 7, 11, 0.85);
+}

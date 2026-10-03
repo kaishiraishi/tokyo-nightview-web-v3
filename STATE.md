@@ -65,6 +65,8 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 ## In progress
 
 - 実機での確認（公開版 `601b604d`）
+- コンパスモードのカード（2026-10-03、モバイル優先）: 縦長はデザインどおりほぼ正方形（745:755、最大幅 420px）にし、文字盤をカードの中央に、文字盤の比率をデザインに合わせた（目盛りの外径 ≒ カード幅の 67%、`DIAL_SCALE` 0.87）。−/＋ は右下で横並び。見出しと縮尺の文字は 13px。地図の距離の円は、カードの実寸を測って避ける（`useRangeRings` の obscured を割合 → 要素に変更）。iPhone 14 の画面サイズで確認。横長（PC・スマホ横向き）は地図の幅の 44% のまま未調整。`docs/figma-screen-spec.md` の 9〜10 章の寸法は未反映
+- 地図のピン（2026-10-03）: MapLibre 既定のしずく形を、専用のピン（`src/components/potential/mapPin.ts` + `index.css` の `.map-pin`）に置き換えた。紫 = 選択地点、白 = 検索結果・お気に入り。ポップアップはピンの頭の上に出す（`MAP_PIN_POPUP_OFFSET`）。紫のピンが 3D 地形の隠れ判定で 20% に薄くなっていたので `opacityWhenCovered: '1'`。iPhone 14 サイズで確認
 
 ## Next
 
@@ -95,6 +97,7 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 - データ・計算: `src/lib/potentialSampler.ts`（色ランプ・閾値・`POTENTIAL_DISPLAY_THRESHOLD`）、`potentialQuantiles.ts`、`potentialStats.ts`、`src/lib/favorites.ts`、`src/lib/storedSettings.ts`、`src/lib/demoAccount.ts`
 - タイル生成: `scripts/make-potential-tiles.sh`、`scripts/bake-potential-tiles.py`、`scripts/potential-quantiles.py`。対象範囲の形は `public/target-area.geojson`（作り方は `PROJECT.md` の Data pipeline）
 - 公開・検証: `.github/workflows/deploy.yml`、`vite.config.ts`、`scripts/verify.sh`
+- Figma 再現指示書: `docs/figma-screen-spec.md`（2026-10-03 の画面から全面改訂。スマホのみ。デザインルール・トークン・全画面の寸法、コンパス関係はデータ → 形・回転・座標まで詳細）。画面の見た目を変えたら合わせて直す。全幅の Directional Field カードは `docs/directional-field-figma.md`
 
 ## Verification
 

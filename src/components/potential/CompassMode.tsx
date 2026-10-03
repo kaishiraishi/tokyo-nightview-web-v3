@@ -28,8 +28,9 @@ export type CompassModeProps = {
 };
 
 // 文字盤の大きさ: main（container）の短辺に対する比率と、文字盤の中の Polar の円の比率（inset 7%）。
-// 目盛り（ベゼル）は文字盤の外へ 12% ずつはみ出すので、全体（1.24 倍）が短辺に収まる値にする
-const DIAL_SCALE = 0.78;
+// 目盛り（ベゼル）は文字盤の外へ 12% ずつはみ出す（全体 1.24 倍）。ふだんの目盛りは外径の 91% までなので、
+// 全体を短辺の約 1.08 倍にして、目盛りの先端がちょうど短辺に収まるようにする（デザインの比率）
+const DIAL_SCALE = 0.87;
 const DISK_SCALE = 0.86;
 const DIAL_SIZE = `calc(min(100cqw, 100cqh) * ${DIAL_SCALE})`;
 // 縮尺バーの長さ = 文字盤上で中心から range までの長さ（Polar の INNER → OUTER）
@@ -84,7 +85,7 @@ function outerDirectionStrengths(data: PotentialViewModel) {
 }
 
 // ベゼルの座標（SVG 単位、半径 100 = 文字盤幅の 0.62 倍）: Polar の円 ≈ 69、方位文字 75、目盛りは 84 から外へ伸びる。
-// 方位文字（高さ約 9.5）と目盛りの間に少し余白を空ける
+// 方位文字（高さ約 10.5）と目盛りの間に少し余白を空ける
 const LABEL_RADIUS = 75;
 const TICK_INNER_RADIUS = 84;
 const TICK_MAX_GROWTH = 9;
@@ -137,7 +138,7 @@ function CompassBezel({ rotation, profile }: { rotation: number; profile: number
                         transform={`rotate(${rotation} ${x} ${y})`}
                         textAnchor="middle"
                         dominantBaseline="central"
-                        fontSize="9.5"
+                        fontSize="10.5"
                         fontWeight={700}
                         fill={label === 'N' ? 'rgb(248,113,113)' : 'rgba(255,255,255,0.92)'}
                         stroke="rgba(5,7,11,0.85)"
@@ -168,7 +169,7 @@ function ForwardCone() {
     );
 }
 
-// カーナビ風の縮尺表示: 左下に実寸の縮尺バー、右下に ＋（詳細 = 範囲を狭く）／−（広域 = 範囲を広く）
+// カーナビ風の縮尺表示: 左下に実寸の縮尺バー、右下に横並びの −（広域 = 範囲を広く）／＋（詳細 = 範囲を狭く）
 function NavScale({ range, onRangeChange }: { range: PotentialRange; onRangeChange: (range: PotentialRange) => void }) {
     const index = POTENTIAL_RANGES.indexOf(range);
     const narrower = index > 0 ? POTENTIAL_RANGES[index - 1] : null;
@@ -178,13 +179,13 @@ function NavScale({ range, onRangeChange }: { range: PotentialRange; onRangeChan
     return (
         <>
             <div className="pointer-events-none absolute bottom-4 left-4 flex flex-col items-start gap-0.5" aria-live="polite">
-                <span className="text-[11px] font-semibold tabular-nums text-white/85">{formatDistance(range)}</span>
+                <span className="text-[13px] font-medium tabular-nums text-white/85">{formatDistance(range)}</span>
                 <span className="block h-1.5 border-x-2 border-b-2 border-white/80" style={{ width: SCALE_BAR_WIDTH }} aria-hidden="true" />
                 <span className="sr-only">表示範囲 {formatDistance(range)}</span>
             </div>
-            <div className="absolute bottom-4 right-4 flex flex-col gap-1.5">
-                <button type="button" className={buttonClass} disabled={narrower === null} onClick={() => narrower !== null && onRangeChange(narrower)} aria-label="範囲を狭める（詳細）">＋</button>
+            <div className="absolute bottom-4 right-4 flex gap-2">
                 <button type="button" className={buttonClass} disabled={wider === null} onClick={() => wider !== null && onRangeChange(wider)} aria-label="範囲を広げる（広域）">−</button>
+                <button type="button" className={buttonClass} disabled={narrower === null} onClick={() => narrower !== null && onRangeChange(narrower)} aria-label="範囲を狭める（詳細）">＋</button>
             </div>
         </>
     );
@@ -221,7 +222,7 @@ export function CompassMode({
     return (
         // 地図の上に浮かべるカード（位置と大きさは PotentialMapView 側）。地図は全面のまま、カードの外側から透けて見える
         <div className={`flex h-full flex-col overflow-hidden rounded-[28px] ${glassSurface} text-white`}>
-            <header className="flex shrink-0 items-center justify-between gap-3 px-4 pb-1 pt-3">
+            <header className="flex shrink-0 items-center justify-between gap-3 pb-1 pl-6 pr-4 pt-3">
                 <div className="min-w-0">
                     <h2 className="sr-only">コンパスモード</h2>
                     {/* 読み取り値は同じ位置に重ね、出し入れでヘッダーの高さ（文字盤の大きさ）が変わらないようにする */}
@@ -232,11 +233,11 @@ export function CompassMode({
                                     向きセンサーを開始
                                 </button>
                             ) : (
-                                <p className={`truncate text-[11px] ${lowAccuracy && status === 'active' ? 'text-amber-200/85' : 'text-white/50'}`}>{message}</p>
+                                <p className={`truncate text-[13px] ${lowAccuracy && status === 'active' ? 'text-amber-200/85' : 'text-white/85'}`}>{message}</p>
                             )}
                         </div>
                         {readout && (
-                            <p className="pointer-events-none absolute inset-0 flex items-center truncate text-[11px] tabular-nums text-white/90" aria-live="polite">
+                            <p className="pointer-events-none absolute inset-0 flex items-center truncate text-[13px] tabular-nums text-white/90" aria-live="polite">
                                 {readout}
                             </p>
                         )}
@@ -247,8 +248,10 @@ export function CompassMode({
                 </button>
             </header>
 
-            {/* 文字盤は残りの高さと幅の小さい方に合わせる（container query 単位） */}
-            <main className="relative grid min-h-0 flex-1 place-items-center px-4 pb-2" style={{ containerType: 'size' }}>
+            {/* 文字盤は残りの高さと幅の小さい方に合わせる（container query 単位）。
+                下にヘッダーと同じ高さ（60px = 上 12 + ボタン 44 + 下 4）の余白を取り、文字盤をカードの中央に置く。
+                縮尺と −/＋ はこの余白の中（左下・右下）に並ぶ */}
+            <main className="relative grid min-h-0 flex-1 place-items-center px-4 pb-[60px]" style={{ containerType: 'size' }}>
                 <div className="relative" style={{ width: DIAL_SIZE, aspectRatio: '1 / 1' }}>
                     <CompassBezel rotation={dialRotation} profile={profile} />
 

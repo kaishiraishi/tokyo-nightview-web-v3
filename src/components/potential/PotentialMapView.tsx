@@ -3,6 +3,7 @@ import maplibregl from 'maplibre-gl';
 import { LayerMenu } from '../layout/LayerMenu';
 import { FloatingSearchBar } from '../layout/FloatingSearchBar';
 import { createStreetViewPopup } from './streetViewPopup';
+import { createMapPin } from './mapPin';
 import { MOBILE_SHEET_CONTROL_BOTTOMS, nextMobileSheetLevel, type MobileSheetLevel } from '../layout/mobileSheet';
 import { AppMenu } from '../menu/AppMenu';
 import { CompassMode } from './CompassMode';
@@ -67,9 +68,11 @@ const DESKTOP_SEARCH_WIDTH = 360;
 // PC の投稿モードで左パネルが開いているときは、ミニコンパス（left 352px）の右に置く: 352 + 64 + 8
 const DESKTOP_POST_SEARCH_BAR_LEFT = 'calc(424px + env(safe-area-inset-left))';
 
-// コンパスモードのカードは地図の上に浮かべる。横長は左（地図の幅の割合）、縦長は上（地図の高さの割合）。
-// 地図側は、カードに隠れる分を避けて距離リングを収める（useRangeRings の obscured）
-const COMPASS_CARD_PORTRAIT_HEIGHT = 0.4;
+// コンパスモードのカードは地図の上に浮かべる。横長は左（地図の幅の割合）、縦長は上。
+// 縦長はデザインどおりほぼ正方形（745:755）にし、幅は画面いっぱい（最大 420px）。
+// 地図側は、カードに隠れる分を実寸で測って避け、距離リングを収める（useRangeRings の obscured）
+const COMPASS_CARD_PORTRAIT_MAX_WIDTH = 420;
+const COMPASS_CARD_PORTRAIT_ASPECT = '745 / 755';
 const COMPASS_CARD_LANDSCAPE_WIDTH = 0.44;
 const LANDSCAPE_QUERY = '(orientation: landscape)';
 // スマホを横向きにしたとき（高さが小さい横長）は、コンパスモードを自動で開く。PC のウィンドウでは開かない
@@ -131,6 +134,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const isLandscape = useMediaQuery(LANDSCAPE_QUERY);
     const isLandscapePhone = useMediaQuery(LANDSCAPE_PHONE_QUERY);
     const compassOpenRef = useRef(false);
+    const compassCardRef = useRef<HTMLDivElement | null>(null);
     const openedByLandscapeRef = useRef(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const isLayerMenuOpen = isMobileViewport ? mobileSheetLevel !== 'collapsed' : isDesktopLayerMenuOpen;
@@ -154,9 +158,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         selectedLocation ?? currentLocation,
         maxDistance,
         isCompassModeOpen,
-        isLandscape
-            ? { edge: 'left', fraction: COMPASS_CARD_LANDSCAPE_WIDTH }
-            : { edge: 'top', fraction: COMPASS_CARD_PORTRAIT_HEIGHT },
+        { edge: isLandscape ? 'left' : 'top', card: compassCardRef },
     );
     useCompassTarget(map, isLoaded, selectedLocation ?? currentLocation, isCompassModeOpen ? compassTarget : null);
     const rotation = deviceHeading.status === 'active' && deviceHeading.heading !== null ? deviceHeading.heading : normalizeAngle(mapBearing);
@@ -219,7 +221,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     useEffect(() => {
         if (!map) return;
         const marker = selectedLocation && !isPostMode
-            ? new maplibregl.Marker({ color: '#a78bfa' }).setLngLat([selectedLocation.lng, selectedLocation.lat]).addTo(map)
+            ? createMapPin('violet').setLngLat([selectedLocation.lng, selectedLocation.lat]).addTo(map)
             : null;
         // ピンを押すと、Street View へのリンクを小さなポップアップで出す（ピンはデバッグモード専用）
         if (marker && selectedLocation && debugMode) {
@@ -524,10 +526,16 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                 {isCompassModeOpen && (
                     // カードは地図の上にわずかに拡大しながら現れる（起点はミニコンパスのある左上）
                     <div
+                        ref={compassCardRef}
                         className="absolute z-[4500] origin-top-left animate-ui-pop"
                         style={isLandscape
                             ? { top: 16, bottom: 16, left: 'max(16px, env(safe-area-inset-left))', width: `${COMPASS_CARD_LANDSCAPE_WIDTH * 100}%` }
-                            : { left: 16, right: 16, top: 'calc(16px + env(safe-area-inset-top))', height: `${COMPASS_CARD_PORTRAIT_HEIGHT * 100}%` }}
+                            : {
+                                left: 16,
+                                top: 'calc(16px + env(safe-area-inset-top))',
+                                width: `min(calc(100% - 32px), ${COMPASS_CARD_PORTRAIT_MAX_WIDTH}px)`,
+                                aspectRatio: COMPASS_CARD_PORTRAIT_ASPECT,
+                            }}
                     >
                     <CompassMode
                         data={compassViewModel}

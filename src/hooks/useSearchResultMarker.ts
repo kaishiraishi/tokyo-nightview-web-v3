@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
+import { createMapPin, MAP_PIN_POPUP_OFFSET } from '../components/potential/mapPin';
 
 // revealId: 選ぶたびに変える番号。同じ地点をもう一度選んだときも、ピンを立て直してポップアップを開く
 export type SearchResultPlace = { lng: number; lat: number; name: string; revealId?: number };
@@ -7,7 +8,6 @@ export type SearchResultPlace = { lng: number; lat: number; name: string; reveal
 // 検索結果（とお気に入りの一覧から開いた地点）に立てるピン。デバッグ用の紫のピン（選択地点。コンパスの中心になる）
 // とは別もので、目印として見せるだけ。紫は選択中の色なので、こちらは白にして区別する。
 // ピンを立てたらポップアップ（名前とお気に入りの追加・解除）を開く。ピンを押すと開き直せる
-const SEARCH_PIN_COLOR = '#f5f5f5';
 
 // ボタンの文言が「追加 / 外す」と動作を表すので aria-pressed は付けない（付けると「外す, 押下」と矛盾して読まれる）。
 // ハートの記号は読み上げない
@@ -52,9 +52,9 @@ export function useSearchResultMarker(
         buttonRef.current = button;
         root.append(title, button);
 
-        const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '260px', className: 'debug-popup' })
+        const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '260px', className: 'debug-popup', offset: MAP_PIN_POPUP_OFFSET })
             .setDOMContent(root);
-        const marker = new maplibregl.Marker({ color: SEARCH_PIN_COLOR }).setLngLat([lng, lat]).setPopup(popup).addTo(map);
+        const marker = createMapPin('white').setLngLat([lng, lat]).setPopup(popup).addTo(map);
         const element = marker.getElement();
         element.setAttribute('aria-label', `検索結果: ${name}`);
         element.style.cursor = 'pointer';
