@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import maplibregl from 'maplibre-gl';
-import { ExternalLink, User } from '../ui/icons';
+import { User } from '../ui/icons';
 import { LayerMenu } from '../layout/LayerMenu';
 import { SearchField } from '../layout/SearchField';
+import { FloatingSearchBar } from '../layout/FloatingSearchBar';
+import { createStreetViewPopup } from './streetViewPopup';
 import { MOBILE_SHEET_CONTROL_BOTTOMS, nextMobileSheetLevel, type MobileSheetLevel } from '../layout/mobileSheet';
 import { AppMenu } from '../menu/AppMenu';
 import { CompassMode } from './CompassMode';
@@ -51,8 +53,12 @@ const MENU_PROFILE = {
 // 右下ボタン列（2 ボタン + 余白）の上に投稿ボタンを置くためのオフセット
 const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 24px)';
 
-// コンパス分割表示中はシートがないので、地図下端の出典表示（2 行になることがある）の上にボタン列を置く
+// シートがないとき（コンパスモード中・探索モードのスマホ）は、地図下端の出典表示（2 行になることがある）の上に部品を置く
 const SPLIT_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom))';
+// 探索モードのスマホは、画面下に浮かぶ検索バー（高さ --btn-h + 10px）の上 12px にボタン列を置く
+const MOBILE_SEARCH_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom) + var(--btn-h) + 22px)';
+// PC の探索モードの検索バーの幅。ミニコンパスはその右に置く（16px + 幅 + 12px）
+const DESKTOP_SEARCH_WIDTH = 360;
 
 // コンパスモードのカードは地図の上に浮かべる。横長は左（地図の幅の割合）、縦長は上（地図の高さの割合）。
 // 地図側は、カードに隠れる分を避けて距離リングを収める（useRangeRings の obscured）
@@ -167,6 +173,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         if (!map || !isLoaded || isPostMode || !debugMode) return;
 
         const handleMapClick = (event: maplibregl.MapMouseEvent) => {
+            // ピン自体を押したとき（Street View のポップアップを開く操作）は、地点を選び直さない
+            const target = event.originalEvent.target;
+            if (target instanceof Element && target.closest('.maplibregl-marker, .maplibregl-popup')) return;
             setSelectedLocation({ lng: event.lngLat.lng, lat: event.lngLat.lat });
         };
 
@@ -203,10 +212,15 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         const marker = selectedLocation && !isPostMode
             ? new maplibregl.Marker({ color: '#a78bfa' }).setLngLat([selectedLocation.lng, selectedLocation.lat]).addTo(map)
             : null;
+        // ピンを押すと、Street View へのリンクを小さなポップアップで出す（ピンはデバッグモード専用）
+        if (marker && selectedLocation && debugMode) {
+            marker.setPopup(createStreetViewPopup(selectedLocation));
+            marker.getElement().style.cursor = 'pointer';
+        }
         return () => {
             marker?.remove();
         };
-    }, [map, selectedLocation, isPostMode]);
+    }, [map, selectedLocation, isPostMode, debugMode]);
 
     useEffect(() => {
         if (!map || !isLoaded || !map.getLayer(POTENTIAL_LAYER_ID)) return;
@@ -258,9 +272,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         map?.flyTo({ center: [result.lng, result.lat], zoom: 13, duration: 1200 });
         setSearchQuery(result.displayName.split(',')[0]);
         setShowResults(false);
-        // シートは検索結果を見せるために広げている。選んだら、飛んだ先の地図が見えるよう閉じる
-        if (isMobileViewport) setMobileSheetLevel('collapsed');
-    }, [isMobileViewport, map]);
+        // 投稿モードのシートは検索結果を見せるために広げている。選んだら、飛んだ先の地図が見えるよう閉じる
+        if (isMobileViewport && isPostMode) setMobileSheetLevel('collapsed');
+    }, [isMobileViewport, isPostMode, map]);
 
     const handleLocate = useCallback(() => {
         if (!map) return;
@@ -323,10 +337,28 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         else stopDeviceHeading();
     }, [startDeviceHeading, stopDeviceHeading]);
 
+    // シートがあるのは投稿モードだけ。探索モードの検索バーは結果を自分の上下に出すので、シートは触らない
     const handleSearchFocus = useCallback(() => {
-        if (isMobileViewport) setMobileSheetLevel('expanded');
+        if (isMobileViewport && isPostMode) setMobileSheetLevel('expanded');
         if (searchResults.length > 0) setShowResults(true);
-    }, [isMobileViewport, searchResults.length]);
+    }, [isMobileViewport, isPostMode, searchResults.length]);
+
+    // 検索結果の一覧は、地図に触れたら閉じる（タッチ端末では一覧の onMouseLeave が起きないことがあるため）
+    useEffect(() => {
+        if (!map || !showResults) return;
+        const closeResults = () => setShowResults(false);
+        map.on('mousedown', closeResults);
+        map.on('touchstart', closeResults);
+        return () => {
+            map.off('mousedown', closeResults);
+            map.off('touchstart', closeResults);
+        };
+    }, [map, showResults]);
+
+    const handleSearchSubmit = useCallback(() => {
+        if (isMobileViewport && isPostMode) setMobileSheetLevel('expanded');
+        void handleSearch(searchQuery);
+    }, [handleSearch, isMobileViewport, isPostMode, searchQuery]);
 
     const handleMobileSheetToggle = useCallback(() => {
         setMobileSheetLevel((level) => nextMobileSheetLevel(level));
@@ -354,23 +386,6 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         setBuildingsEnabled(writeStoredBuildingsEnabled(enabled));
     }, []);
 
-    // Street View リンクは検証用なので、設定でデバッグモードを ON にしたときだけ出す。
-    const streetViewBlock = debugMode && selectedLocation ? (
-        <div>
-            <a
-                href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedLocation.lat},${selectedLocation.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-300/[0.08] px-3 py-2 text-center text-xs font-semibold text-sky-100 transition-colors hover:border-sky-200/50 hover:bg-sky-300/[0.14]"
-            >
-                <span>Google マップで周辺のストリートビューを探す</span>
-                <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            </a>
-            <p className="mt-2 text-center text-[10px] leading-relaxed text-white/40">
-                選択地点に画像がない場合は、近くの場所が表示されることがあります。Google マップが別タブで開きます。
-            </p>
-        </div>
-    ) : null;
 
     return (
         // コンパスモード中も地図は全面のまま、その上にコンパスのカードを浮かべる（縦長: 上 / 横長: 左）
@@ -412,7 +427,11 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
 
                 {/* ミニコンパスは探索・投稿の両モードで出す（分割表示中は上半分に本体があるので隠す） */}
                 {!isCompassModeOpen && (
-                    <div className={`absolute left-4 top-[calc(16px+env(safe-area-inset-top))] z-[4500] transition-[left] duration-300 ${isDesktopLayerMenuOpen ? 'md:left-[352px]' : ''}`}>
+                    // PC の左上は、探索モードでは検索バーの右、投稿モードではサイドパネルの右に置く
+                    <div
+                        className={`absolute left-4 top-[calc(16px+env(safe-area-inset-top))] z-[4500] transition-[left] duration-300 ${!isPostMode ? 'md:left-[var(--mini-compass-left)]' : isDesktopLayerMenuOpen ? 'md:left-[352px]' : ''}`}
+                        style={{ '--mini-compass-left': `${16 + DESKTOP_SEARCH_WIDTH + 12}px` } as CSSProperties}
+                    >
                         <MiniCompass
                             data={compassViewModel}
                             rotation={rotation}
@@ -469,8 +488,30 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     )}
                 </div>
 
-                {/* コンパスとの分割表示中は、地図側を広く使うためシート／サイドパネルを隠す */}
-                {!isCompassModeOpen && (
+                {/* 探索モードは面を持たない浮かぶ検索バー（PC: 左上、ミニコンパスと縦の中心を揃える / スマホ: 画面下）。
+                    コンパスモード中は地図側を広く使うため隠す */}
+                {!isCompassModeOpen && !isPostMode && (
+                    <FloatingSearchBar
+                        onOpenMenu={() => setIsMenuOpen(true)}
+                        searchQuery={searchQuery}
+                        onSearchChange={setSearchQuery}
+                        onSearchSubmit={handleSearchSubmit}
+                        isSearching={isSearching}
+                        searchResults={searchResults}
+                        showResults={showResults}
+                        onSelectResult={handleSelectResult}
+                        onCloseResults={() => setShowResults(false)}
+                        onFocusSearch={handleSearchFocus}
+                        resultsPlacement={isMobileViewport ? 'above' : 'below'}
+                        style={isMobileViewport ? { bottom: SPLIT_CONTROL_BOTTOM } : { width: DESKTOP_SEARCH_WIDTH }}
+                        className={isMobileViewport
+                            ? 'absolute left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] z-[4600]'
+                            : 'absolute left-[max(1rem,env(safe-area-inset-left))] top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[4600]'}
+                    />
+                )}
+
+                {/* 投稿モードは投稿一覧があるので、シート（スマホ）／サイドパネル（PC）を使う。コンパスモード中は隠す */}
+                {!isCompassModeOpen && isPostMode && (
                     <LayerMenu
                         isOpen={isLayerMenuOpen}
                         onToggle={handleLayerMenuToggle}
@@ -480,8 +521,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                             <div className="shrink-0 border-b border-white/10 px-3 pb-3 pt-1 md:p-4">
                                 <div className="mb-2 hidden items-center justify-between gap-2 md:flex">
                                     <div>
-                                        <p className="text-[10px] font-semibold tracking-[0.18em] text-white/40">{isPostMode ? 'POSTS' : 'EXPLORE'}</p>
-                                        <p className="mt-1 text-sm font-semibold text-white/85">{isPostMode ? '夜景の投稿' : '夜景を探す'}</p>
+                                        <p className="text-[10px] font-semibold tracking-[0.18em] text-white/40">POSTS</p>
+                                        <p className="mt-1 text-sm font-semibold text-white/85">夜景の投稿</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -497,10 +538,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                                 <SearchField
                                     searchQuery={searchQuery}
                                     onSearchChange={setSearchQuery}
-                                    onSearchSubmit={() => {
-                                        if (isMobileViewport) setMobileSheetLevel('expanded');
-                                        void handleSearch(searchQuery);
-                                    }}
+                                    onSearchSubmit={handleSearchSubmit}
                                     isSearching={isSearching}
                                     searchResults={searchResults}
                                     showResults={showResults}
@@ -512,7 +550,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                                 </div>
                             </div>
 
-                            {isPostMode && (!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
+                            {(!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
                                 <div className="min-h-0 flex-1 overflow-y-auto">
                                     <PostListPanel
                                         posts={posts}
@@ -524,24 +562,21 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                                 </div>
                             )}
 
-                            {/* 探索モードのシートは検索だけ。方向・距離の分析はミニコンパス（コンパスモード）で見る。
-                                デバッグモードのときだけ、選択地点の Street View リンクを出す */}
-                            {!isPostMode && streetViewBlock && (!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
-                                <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-3">{streetViewBlock}</div>
-                            )}
                         </div>
                     </LayerMenu>
                 )}
 
-                {/* シート最大時はボタン列が右上のモード切替と重なるので隠す */}
-                {(isCompassModeOpen || !(isMobileViewport && mobileSheetLevel === 'expanded')) && (
+                {/* 投稿モードのシート最大時はボタン列が右上のモード切替と重なるので隠す */}
+                {(isCompassModeOpen || !(isPostMode && isMobileViewport && mobileSheetLevel === 'expanded')) && (
                 <MapControlStack
                     onLocate={handleLocate}
                     onOpenMapModes={() => setIsMapModesOpen(true)}
                     isMapModesOpen={isMapModesOpen}
                     style={isCompassModeOpen
                         ? { bottom: SPLIT_CONTROL_BOTTOM }
-                        : isMobileViewport ? { bottom: MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] } : undefined}
+                        : !isMobileViewport ? undefined
+                        : isPostMode ? { bottom: MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] }
+                        : { bottom: MOBILE_SEARCH_CONTROL_BOTTOM }}
                     // 横向きのノッチ側に隠れないよう、右端は安全領域の内側に置く
                     className="absolute right-[max(1rem,env(safe-area-inset-right))] z-[4500] md:bottom-8 md:right-[max(2rem,env(safe-area-inset-right))]"
                 />

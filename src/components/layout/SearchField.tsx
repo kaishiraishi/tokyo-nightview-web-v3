@@ -11,23 +11,31 @@ type SearchFieldProps = {
     onSelectResult: (result: GeocodingResult) => void;
     onCloseResults: () => void;
     onFocusSearch: () => void;
-    variant?: 'top' | 'sheet' | 'side';
+    variant?: 'top' | 'sheet' | 'side' | 'floating';
+    // 検索結果を欄の下に出すか上に出すか（画面下に浮かぶ検索バーでは上に出す）
+    resultsPlacement?: 'below' | 'above';
 };
 
 const variantClasses = {
     top: {
-        field: 'rounded-full bg-black/60 px-4 shadow-lg backdrop-blur-md group-focus-within:bg-black/80 group-focus-within:border-white/20',
+        field: 'rounded-full border border-white/10 bg-black/60 px-4 shadow-lg backdrop-blur-md group-focus-within:bg-black/80 group-focus-within:border-white/20',
         height: 'h-12',
         placeholder: '場所を検索...',
     },
     sheet: {
-        field: 'rounded-2xl bg-white/[0.06] px-4 shadow-inner backdrop-blur-md focus-within:bg-white/[0.09]',
+        field: 'rounded-2xl border border-white/10 bg-white/[0.06] px-4 shadow-inner backdrop-blur-md focus-within:bg-white/[0.09]',
         height: 'h-12',
         placeholder: '場所を検索',
     },
     side: {
-        field: 'rounded-2xl bg-white/[0.05] px-3 shadow-inner backdrop-blur-md focus-within:bg-white/[0.08]',
+        field: 'rounded-2xl border border-white/10 bg-white/[0.05] px-3 shadow-inner backdrop-blur-md focus-within:bg-white/[0.08]',
         height: 'h-11',
+        placeholder: '場所を検索',
+    },
+    // FloatingSearchBar のピルの中に置く。面と枠はピル側（glassControl）が持つので、欄自体は透明
+    floating: {
+        field: 'rounded-full px-3',
+        height: 'h-[var(--btn-h)]',
         placeholder: '場所を検索',
     },
 } as const;
@@ -43,16 +51,19 @@ export function SearchField({
     onCloseResults,
     onFocusSearch,
     variant = 'top',
+    resultsPlacement = 'below',
 }: SearchFieldProps) {
     const classes = variantClasses[variant];
 
     return (
-        <div className="group relative z-20 w-full min-w-0 flex-1">
-            <div className={`flex w-full items-center gap-3 border border-white/10 transition-colors ${classes.field} ${classes.height}`}>
+        // floating では位置の基準を外側のピルにして、検索結果をピル全体の幅で出す
+        <div className={`group z-20 w-full min-w-0 flex-1 ${variant === 'floating' ? '' : 'relative'}`}>
+            <div className={`flex w-full items-center gap-3 transition-colors ${classes.field} ${classes.height}`}>
                 <Search className="h-5 w-5 shrink-0 text-white/50" aria-hidden="true" />
                 <input
                     // 16px 未満だと iOS Safari がフォーカス時に画面を拡大するので、スマホは 16px にする
-                    className="h-full min-w-0 flex-1 bg-transparent text-base text-white placeholder-white/45 outline-none md:text-sm"
+                    // ブラウザ標準の消去ボタンは隠す（右側に独自の × を出すので二重になる）
+                    className="h-full min-w-0 flex-1 bg-transparent text-base text-white placeholder-white/45 outline-none md:text-sm [&::-webkit-search-cancel-button]:appearance-none"
                     placeholder={classes.placeholder}
                     type="search"
                     value={searchQuery}
@@ -85,7 +96,7 @@ export function SearchField({
 
             {showResults && searchResults.length > 0 && (
                 <div
-                    className="absolute left-0 right-0 top-[calc(100%+8px)] overflow-hidden rounded-2xl border border-white/15 bg-[#05070b]/95 shadow-2xl backdrop-blur-xl"
+                    className={`absolute left-0 right-0 ${resultsPlacement === 'above' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'} overflow-hidden rounded-2xl border border-white/15 bg-[#05070b]/95 shadow-2xl backdrop-blur-xl`}
                     onMouseLeave={onCloseResults}
                 >
                     <div className="max-h-[42dvh] overflow-y-auto py-2">
