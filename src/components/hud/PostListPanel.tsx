@@ -44,10 +44,14 @@ export function PostListPanel({ posts, isLoading, onPostClick, isUnlocked = () =
                     >
                         <div className="flex gap-3">
                             {/* Thumbnail or Icon */}
-                            <div className="w-16 h-16 shrink-0 bg-black/40 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center">
-                                {!unlocked ? (
-                                    <Lock className="w-6 h-6 text-violet-200/70" aria-label="まだ着いていない投稿" />
-                                ) : post.photos?.[0]?.url ? (
+                            <div className="relative w-16 h-16 shrink-0 bg-black/40 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center">
+                                {/* 着く前の投稿も写真は見せ、正確な場所だけ伏せる（鍵の印を写真に重ねる） */}
+                                {!unlocked && (
+                                    <span className="absolute bottom-1 right-1 z-[1] grid h-5 w-5 place-items-center rounded-full bg-black/70" aria-label="まだ着いていない投稿">
+                                        <Lock className="h-3 w-3 text-violet-200" aria-hidden="true" />
+                                    </span>
+                                )}
+                                {post.photos?.[0]?.url ? (
                                     <img 
                                         src={post.photos[0].url} 
                                         alt="投稿画像" 

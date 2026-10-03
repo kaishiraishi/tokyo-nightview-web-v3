@@ -7,6 +7,8 @@ import { approximateArea, distanceMeters, formatDistanceAway, UNLOCK_RADIUS_M } 
 
 // このズーム以上で写真付きの詳細カードに切り替える
 const IMAGE_ZOOM_THRESHOLD = 13;
+// 着く前のカードの「近づくと正確な場所がわかります」は、その場所まで寄ったとき（このズーム以上）だけ出す
+const HINT_ZOOM_THRESHOLD = 15;
 const AREA_SOURCE_ID = 'post-areas';
 const AREA_FILL_LAYER_ID = 'post-areas-fill';
 const AREA_LINE_LAYER_ID = 'post-areas-line';
@@ -39,14 +41,17 @@ function buildPopupHtml(post: Post, expanded: boolean, isFavorite: boolean): str
     return `<div class="night-popup-card">${favoriteButtonHtml(isFavorite)}${photoUrl ? `<img class="night-popup-img" src="${escapeHtml(photoUrl)}" alt="" loading="lazy" decoding="async" width="232" height="131" />` : ''}<div class="night-popup-text"><div class="night-popup-caption">${caption}</div><div class="night-popup-meta-row"><span class="night-popup-meta">${placeName}${areaText}</span>${authorName}</div></div></div>`;
 }
 
-// 着く前のカード: 写真・正確な場所・お気に入りは出さず、キャプション・地域・現在地からの距離と、解放の条件だけ
-function buildLockedHtml(post: Post, distance: number | null): string {
+// 着く前のカード: 写真とキャプションは見せ、正確な場所だけ隠す。場所は「〇〇市 付近」と現在地からの距離を 1 行に、
+// 解放の条件は 1 行で。お気に入り（ハート）は出さない（登録すると正確な座標が残るため）
+function buildLockedHtml(post: Post, expanded: boolean, showHint: boolean, distance: number | null): string {
     const caption = escapeHtml(post.caption ?? '');
+    if (!expanded) {
+        return `<div class="night-popup-card night-popup-simple"><div class="night-popup-caption" style="display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${caption}</div></div>`;
+    }
     const area = escapeHtml(post.location.area ?? 'この辺り');
-    const away = distance === null
-        ? '<span class="night-popup-hint">現在地がわかると距離が出ます</span>'
-        : `<span class="night-popup-away">ここから約 ${formatDistanceAway(distance)}</span>`;
-    return `<div class="night-popup-card night-popup-locked"><div class="night-popup-caption">${caption}</div><div class="night-popup-meta-row"><span class="night-popup-meta">${area} 付近</span>${away}</div><div class="night-popup-hint">${UNLOCK_RADIUS_M}m 以内に近づくと、写真と正確な場所がわかります</div></div>`;
+    const away = distance === null ? '' : ` · ここから約 ${formatDistanceAway(distance)}`;
+    const photoUrl = post.photos?.[0]?.url ?? '';
+    return `<div class="night-popup-card">${photoUrl ? `<img class="night-popup-img" src="${escapeHtml(photoUrl)}" alt="" loading="lazy" decoding="async" width="232" height="131" />` : ''}<div class="night-popup-text"><div class="night-popup-caption">${caption}</div><div class="night-popup-meta-row"><span class="night-popup-meta">${area} 付近${away}</span></div>${showHint ? `<div class="night-popup-hint">${UNLOCK_RADIUS_M}m 以内に近づくと正確な場所がわかります</div>` : ''}</div></div>`;
 }
 
 function areaPolygon(center: MapLocation, radius: number): GeoJSON.Feature {
@@ -87,6 +92,7 @@ export function usePostPopups(
 
         const popups = new Map<string, { popup: maplibregl.Popup; post: Post; unlocked: boolean }>();
         let expanded = map.getZoom() >= IMAGE_ZOOM_THRESHOLD;
+        let showHint = map.getZoom() >= HINT_ZOOM_THRESHOLD;
         const isFavorite = (post: Post) => favoriteIdsRef.current.has(favoriteId(post.location.lng, post.location.lat));
         const render = (popup: maplibregl.Popup, post: Post, unlocked: boolean) => {
             if (unlocked) {
@@ -95,7 +101,7 @@ export function usePostPopups(
             }
             const location = locationRef.current;
             const distance = location ? distanceMeters(location, { lng: post.location.lng, lat: post.location.lat }) : null;
-            popup.setHTML(buildLockedHtml(post, distance));
+            popup.setHTML(buildLockedHtml(post, expanded, showHint, distance));
         };
 
         const lockedAreas: GeoJSON.Feature[] = [];
@@ -152,8 +158,10 @@ export function usePostPopups(
         };
         const handleZoom = () => {
             const next = map.getZoom() >= IMAGE_ZOOM_THRESHOLD;
-            if (next === expanded) return;
+            const nextHint = map.getZoom() >= HINT_ZOOM_THRESHOLD;
+            if (next === expanded && nextHint === showHint) return;
             expanded = next;
+            showHint = nextHint;
             renderAll();
         };
         map.on('zoom', handleZoom);
