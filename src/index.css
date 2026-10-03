@@ -164,17 +164,9 @@ body {
     color: rgba(255, 255, 255, 0.5);
 }
 
-.night-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
-    border-bottom-color: rgba(5, 7, 11, 0.8);
-}
-.night-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
-    border-top-color: rgba(5, 7, 11, 0.8);
-}
-.night-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
-    border-right-color: rgba(5, 7, 11, 0.8);
-}
-.night-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
-    border-left-color: rgba(5, 7, 11, 0.8);
+/* 投稿カードの下の三角（吹き出しの矢印）は出さない。カードは地点の少し上に浮かべるだけにする */
+.night-popup .maplibregl-popup-tip {
+    display: none;
 }
 
 @keyframes night-popup-rise {
