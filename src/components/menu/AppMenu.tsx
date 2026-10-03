@@ -15,6 +15,7 @@ import { type ReactNode, useState } from 'react';
 import type { FanConfig } from '../map/types';
 import { PanelViewSelector, type PanelView } from '../potential/PanelViewSelector';
 import { closeButton, glassSurface, textMuted, textPrimary } from '../../styles/ui';
+import buildings3dExample from '../../assets/settings/buildings-3d.webp';
 
 type AppMenuProps = {
   isOpen: boolean;
@@ -170,18 +171,6 @@ export function AppMenu({
               </>
             ) : (
               <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                {hasPanelViewSetting && (
-                  <section>
-                    <h3 className={`mb-3 px-2 text-sm font-semibold ${textPrimary}`}>方向・距離の表示</h3>
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 shadow-inner">
-                      <p className={`mb-4 px-1 text-xs leading-relaxed ${textMuted}`}>
-                        地図上で表示する方向・距離パネルを選択できます。
-                      </p>
-                      <PanelViewSelector value={panelView} onChange={onPanelViewChange} />
-                    </div>
-                  </section>
-                )}
-
                 {hasFanConfigSetting && (
                   <section>
                     <h3 className={`mb-3 px-2 text-sm font-semibold ${textPrimary}`}>スキャン設定</h3>
@@ -242,6 +231,8 @@ export function AppMenu({
                   <SettingSwitch
                     title="3D 建物"
                     description="拡大したときに PLATEAU の建物を立体で表示します。オフにすると地図が軽くなります。"
+                    // 見本はこのアプリの地図を撮影したもの（東京駅・丸の内付近、z16・傾き 62°）。建物の見た目を変えたら撮り直す
+                    image={{ src: buildings3dExample, alt: '3D 建物の表示例。東京駅・丸の内付近の高層ビルが立体で並んでいる' }}
                     checked={buildingsEnabled}
                     onChange={onBuildingsEnabledChange}
                   />
@@ -254,6 +245,19 @@ export function AppMenu({
                     checked={debugMode}
                     onChange={onDebugModeChange}
                   />
+                )}
+
+                {/* 検証用の表示切り替えなので、デバッグモードのときだけ出す（今は表示に影響しない。STATE.md の Next 2） */}
+                {debugMode && hasPanelViewSetting && (
+                  <section>
+                    <h3 className={`mb-3 px-2 text-sm font-semibold ${textPrimary}`}>方向・距離の表示</h3>
+                    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 shadow-inner">
+                      <p className={`mb-4 px-1 text-xs leading-relaxed ${textMuted}`}>
+                        地図上で表示する方向・距離パネルを選択できます。
+                      </p>
+                      <PanelViewSelector value={panelView} onChange={onPanelViewChange} />
+                    </div>
+                  </section>
                 )}
 
                 {!hasPanelViewSetting && !hasFanConfigSetting && !hasDebugModeSetting && !hasBuildingsSetting && !hasHeadingSensorSetting && (
@@ -283,12 +287,15 @@ function SettingSwitch({
   note,
   checked,
   onChange,
+  image,
 }: {
   title: string;
   description: string;
   note?: string | null;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  // 説明の下に出す見本の画像（16:9）
+  image?: { src: string; alt: string };
 }) {
   return (
     <section>
@@ -312,6 +319,9 @@ function SettingSwitch({
             />
           </span>
         </button>
+        {image && (
+          <img src={image.src} alt={image.alt} loading="lazy" className="mt-3 block aspect-video w-full rounded-2xl border border-white/10 object-cover" />
+        )}
         {note && <p role="status" className="mt-2 px-1 text-[11px] leading-relaxed text-red-300/90">{note}</p>}
       </div>
     </section>
