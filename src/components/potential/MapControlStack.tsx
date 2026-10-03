@@ -8,14 +8,18 @@ type MapControlStackProps = {
     isMapModesOpen: boolean;
     style?: CSSProperties;
     className?: string;
+    // 投稿モードでは、ピルの一番上に投稿（カメラ）ボタンの場所を空ける。ボタン本体は PostComposer が
+    // この場所に重ねて置く（投稿フォームの開閉を PostComposer が持つため）
+    reserveTopSlot?: boolean;
 };
 
 // 右下の縦並びボタン。現在地への移動と Map Modes（レイヤー設定）を 1 本のピルにまとめる。
-export function MapControlStack({ onLocate, onOpenMapModes, isMapModesOpen, style, className = '' }: MapControlStackProps) {
+export function MapControlStack({ onLocate, onOpenMapModes, isMapModesOpen, style, className = '', reserveTopSlot = false }: MapControlStackProps) {
     const buttonClass = 'grid h-[var(--btn-h)] w-[var(--btn-h)] place-items-center rounded-full transition-colors active:scale-95';
 
     return (
         <div style={style} className={`flex flex-col gap-1 rounded-full ${glassControl} p-1 ${className}`}>
+            {reserveTopSlot && <div className="h-[var(--btn-h)] w-[var(--btn-h)]" aria-hidden="true" />}
             <button type="button" onClick={onLocate} aria-label="現在地へ移動" title="現在地へ移動" className={`${buttonClass} text-white/90 hover:bg-white/10`}>
                 <Navigation className="h-5 w-5" aria-hidden="true" />
             </button>

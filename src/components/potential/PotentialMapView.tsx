@@ -48,8 +48,9 @@ import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi
 import { normalizeAngle } from '../../lib/heading';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-// 右下ボタン列（2 ボタン + 余白）の上に投稿ボタンを置くためのオフセット
-const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 24px)';
+// 投稿ボタンは右下ボタン列のピルの一番上（reserveTopSlot）に重ねる。ピルの下端からの高さ =
+// 枠 1px + 余白 4px + ボタン 2 つ + 間隔 4px × 2
+const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 13px)';
 
 // シートがないとき（コンパスモード中・探索モードのスマホ）は、地図下端の出典表示（2 行になることがある）の上に部品を置く
 const SPLIT_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom))';
@@ -661,6 +662,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                 {/* 投稿モードのシート最大時はボタン列が右上のモード切替と重なるので隠す */}
                 {(isCompassModeOpen || !(isPostMode && isMobileViewport && mobileSheetLevel === 'expanded')) && (
                 <MapControlStack
+                    reserveTopSlot={isPostMode && !isCompassModeOpen}
                     onLocate={handleLocate}
                     onOpenMapModes={() => setIsMapModesOpen(true)}
                     isMapModesOpen={isMapModesOpen}
@@ -674,7 +676,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                 />
                 )}
 
-                {isPostMode && (
+                {/* 投稿ボタンはボタン列のピルに重ねるので、ボタン列が動く・隠れる間（コンパスモード中・シート最大時）は出さない */}
+                {isPostMode && !isCompassModeOpen && !(isMobileViewport && mobileSheetLevel === 'expanded') && (
                     <PostComposer
                         map={map}
                         currentLocation={currentLocation}

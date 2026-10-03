@@ -119,18 +119,19 @@ export function PostComposer({ map, currentLocation, onRequestLocation, onPosted
 
     return (
         <>
-            {/* 右下の MapControlStack（枠 1px + 内側の余白 4px）の現在地ボタンと中心を揃える。右端の値は MapControlStack と同じ */}
-            <div className="absolute right-[calc(max(1rem,env(safe-area-inset-right))+5px)] z-[4500] flex flex-col items-end animate-ui-rise md:bottom-24 md:right-[calc(max(2rem,env(safe-area-inset-right))+5px)]" style={style}>
+            {/* 右下の MapControlStack がピルの一番上に空けた場所（reserveTopSlot）に重ねる。右端は MapControlStack の
+                枠 1px + 内側の余白 4px の内側、高さの位置は呼び出し側の style で合わせる */}
+            <div className="absolute right-[calc(max(1rem,env(safe-area-inset-right))+5px)] z-[4510] flex flex-col items-end md:right-[calc(max(2rem,env(safe-area-inset-right))+5px)]" style={style}>
                 <button
                     ref={buttonRef}
                     type="button"
                     onClick={handleToggle}
-                    className="group flex h-[var(--btn-h)] w-[var(--btn-h)] items-center justify-center rounded-full border border-violet-700/60 bg-black/60 text-white shadow-lg backdrop-blur-md transition-all duration-200 hover:border-violet-600 hover:bg-violet-700/20 active:scale-95"
+                    className={`group flex h-[var(--btn-h)] w-[var(--btn-h)] items-center justify-center rounded-full transition-colors active:scale-95 ${isOpen ? 'bg-violet-700/80' : 'hover:bg-white/10'}`}
                     aria-label="投稿する"
                     aria-pressed={isOpen}
                     title="投稿する"
                 >
-                    <Camera className="h-5 w-5 text-violet-300 transition-transform group-hover:scale-110" aria-hidden="true" />
+                    <Camera className={`h-5 w-5 ${isOpen ? 'text-white' : 'text-violet-300'}`} aria-hidden="true" />
                 </button>
                 {isOpen && (
                     <div ref={modalRef} className={`absolute bottom-14 right-0 max-h-[70dvh] w-72 overflow-y-auto rounded-2xl ${glassSurface} p-4`}>
