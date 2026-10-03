@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み。**2026-10-03 に `601b604d` を公開**（投稿の「着いたら分かる」仕組み、アカウントのデモ、上の帯の検索バー、スコアの内訳、1都3県の線などを含む。GitHub Actions の build・deploy 成功）。
+v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み。**2026-10-03 に `7e45e7d6` を公開**（正方形のコンパスカードと新しい地図のピン。その前の `601b604d` で、投稿の「着いたら分かる」仕組み、アカウントのデモ、上の帯の検索バー、スコアの内訳、1都3県の線などを公開済み。GitHub Actions の build・deploy 成功）。
 次は、公開版を実機（iOS Safari / Android Chrome）で確認し、その結果に基づいて調整すること（下の Next 1）。
 
 ## Deployment
@@ -64,7 +64,7 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 
 ## In progress
 
-- 実機での確認（公開版 `601b604d`）
+- 実機での確認（公開版 `7e45e7d6`）
 - コンパスモードのカード（2026-10-03、モバイル優先）: 縦長はデザインどおりほぼ正方形（745:755、最大幅 420px）にし、文字盤をカードの中央に、文字盤の比率をデザインに合わせた（目盛りの外径 ≒ カード幅の 67%、`DIAL_SCALE` 0.87）。−/＋ は右下で横並び。見出しと縮尺の文字は 13px。地図の距離の円は、カードの実寸を測って避ける（`useRangeRings` の obscured を割合 → 要素に変更）。iPhone 14 の画面サイズで確認。横長（PC・スマホ横向き）は地図の幅の 44% のまま未調整。`docs/figma-screen-spec.md` の 9〜10 章の寸法は未反映
 - 地図のピン（2026-10-03）: MapLibre 既定のしずく形を、専用のピン（`src/components/potential/mapPin.ts` + `index.css` の `.map-pin`）に置き換えた。紫 = 選択地点、白 = 検索結果・お気に入り。ポップアップはピンの頭の上に出す（`MAP_PIN_POPUP_OFFSET`）。紫のピンが 3D 地形の隠れ判定で 20% に薄くなっていたので `opacityWhenCovered: '1'`。iPhone 14 サイズで確認
 
@@ -101,6 +101,7 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 
 ## Verification
 
+- 2026-10-03（`7e45e7d6`）: `./scripts/verify.sh` lint / typecheck / build PASS。GitHub Actions の build・deploy 成功。公開 URL が 200、公開中の JS に新しいピン（`map-pin__head`）とカードの縦横比（`745 / 755`）が入っていることを確認
 - 2026-10-03（`601b604d`）: `./scripts/verify.sh` lint / typecheck / build PASS。GitHub Actions の build・deploy 成功。公開 URL で `/`、`target-area.geojson`、タイル 2 系統、manifest が 200。公開中の JS に新しいコード（`nightview.unlockedPosts`）が入っていることを確認
 - agent-browser（390×844 / 700×900 / 1280×800）で確認したもの: スコアの切り替えと内訳、1都3県の線、コンパスのタップ地点、上の帯の検索バー（両モード）、検索ピンとお気に入り、メニュー各ページ、アカウントのデモ、投稿の解放（位置情報を擬似設定: 11.9km 先は解放せず、地点で解放。精度 500m は解放せず 20m で解放）、引きのクラスタと丸を押して寄る動き、カメラボタンの位置、位置情報エラーが同じ理由で一度だけ出ること
 - レビュー（Workflow: 2 観点で探す → 別のエージェントが反証）を 3 回実施し、確定した指摘はすべて修正済み
