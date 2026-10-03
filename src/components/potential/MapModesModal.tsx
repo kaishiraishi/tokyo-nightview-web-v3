@@ -22,15 +22,17 @@ export type MapModesModalProps = {
 };
 
 const SCOPES: Array<{ id: PotentialDisplayScope; label: string }> = [
-    { id: 'top10', label: '上位 10%' },
-    { id: 'all', label: 'すべて' },
+    { id: 'top10', label: '高のみ' },
+    { id: 'all', label: '高・中・低' },
 ];
 
 // 地図に出す範囲だけを切り替える。コンパスの分析はどちらでも同じデータを使う
 function ScopeSelector({ scope, onChange }: { scope: PotentialDisplayScope; onChange: (scope: PotentialDisplayScope) => void }) {
     return (
+        // 数字（上位 10%）は伝わりにくいので、スコアの高・中・低で表す。「高」は色の付く場所のうち上位 1 割
+        <div>
         <div className="flex items-center justify-between gap-3">
-            <span id="map-modes-potential-scope" className="text-xs text-white/65">表示する範囲</span>
+            <span id="map-modes-potential-scope" className="text-xs text-white/65">表示するスコア</span>
             <div role="group" aria-labelledby="map-modes-potential-scope" className="flex rounded-full border border-white/10 bg-black/30 p-0.5">
                 {SCOPES.map((option) => {
                     const selected = option.id === scope;
@@ -47,6 +49,10 @@ function ScopeSelector({ scope, onChange }: { scope: PotentialDisplayScope; onCh
                     );
                 })}
             </div>
+        </div>
+        <p className="mt-2 text-[11px] leading-relaxed text-white/45">
+            {scope === 'top10' ? '夜景を特に楽しめそうな場所だけに色を付けます。' : 'スコアが低い場所から高い場所まで、すべてに色を付けます。'}
+        </p>
         </div>
     );
 }
@@ -81,7 +87,7 @@ function PotentialExplainer() {
                     <h3 className="mb-1 font-semibold text-white/85">見かた</h3>
                     <ul className="list-disc space-y-1 pl-4">
                         <li>黄色・オレンジに近いほど高く、暗い紫ほど低い値です。</li>
-                        <li>値が小さい場所は色を付けず、地図をそのまま見せています。「上位 10%」では、色の付く場所のうち特に高い 1 割だけを表示します。</li>
+                        <li>値が小さい場所は色を付けず、地図をそのまま見せています。「表示するスコア」を「高のみ」にすると、色の付く場所のうち特に高い場所だけを表示します。</li>
                     </ul>
                 </div>
                 <div>
