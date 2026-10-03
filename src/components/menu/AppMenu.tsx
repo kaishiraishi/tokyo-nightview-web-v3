@@ -100,7 +100,7 @@ export function AppMenu({
         }}
       />
 
-      <div className={`${glassSurface} relative w-full max-w-md overflow-hidden rounded-[28px] text-white animate-in fade-in zoom-in duration-200`}>
+      <div className={`${glassSurface} relative w-full max-w-md overflow-hidden rounded-[28px] text-white animate-ui-pop`}>
         <div className="flex max-h-[90vh] flex-col">
           <div className="relative flex items-center justify-center border-b border-white/10 px-6 py-5">
             {activeView !== 'main' && (
@@ -132,7 +132,7 @@ export function AppMenu({
           <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
             {activeView === 'main' && (
               // アカウントがないので、プロフィールや架空の数字は出さない。数字は実際の件数だけ
-              <div className="space-y-6">
+              <div className="space-y-6 animate-ui-view">
                 <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.03] shadow-inner">
                   {hasFavorites && (
                     <MenuRow
@@ -162,6 +162,7 @@ export function AppMenu({
             )}
 
             {activeView === 'favorites' && hasFavorites && (
+              <div className="animate-ui-view">
               <FavoritesView
                 favorites={favorites}
                 onSelect={(favorite) => {
@@ -173,12 +174,17 @@ export function AppMenu({
                 isLocating={isLocatingFavorite}
                 locateError={favoriteLocateError}
               />
+              </div>
             )}
 
-            {activeView === 'guide' && <GuideView />}
+            {activeView === 'guide' && (
+              <div className="animate-ui-view">
+                <GuideView />
+              </div>
+            )}
 
             {activeView === 'settings' && (
-              <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+              <div className="space-y-6 animate-ui-view">
                 {hasFanConfigSetting && (
                   <section>
                     <h3 className={`mb-3 px-2 text-sm font-semibold ${textPrimary}`}>スキャン設定</h3>

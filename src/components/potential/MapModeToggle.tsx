@@ -7,19 +7,26 @@ type MapModeToggleProps = {
     className?: string;
 };
 
-// 右上の探索 / 投稿切替。投稿ボタンは主ボタンとして常に紫で塗り、選択中は白い縁で示す。
+// 右上の探索 / 投稿切替。選択中の背景（探索 = 白、投稿 = 紫）が左右に滑って移る。
+// 投稿を選んでいないときも、スパークルを紫にして投稿の入口だと分かるようにする。
+// 動きは motion-safe のときだけ（prefers-reduced-motion では即座に切り替える）
 export function MapModeToggle({ mode, onModeChange, className = '' }: MapModeToggleProps) {
     const isExplore = mode === 'explore';
 
     return (
-        <div className={`flex items-center rounded-full ${glassControl} p-1 ${className}`} role="group" aria-label="モード切替">
+        // 外側の位置指定（absolute など）は呼び出し側の className で決める。滑る背景はその中で絶対配置する
+        <div className={`flex items-center rounded-full ${glassControl} p-1 ${className || 'relative'}`} role="group" aria-label="モード切替">
+            <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute left-1 top-1 h-[var(--btn-h)] w-[var(--btn-h)] rounded-full shadow-sm motion-safe:transition-[transform,background-color] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] ${isExplore ? 'translate-x-0 bg-white' : 'translate-x-[var(--btn-h)] bg-violet-700'}`}
+            />
             <button
                 type="button"
                 onClick={() => onModeChange('explore')}
                 aria-label="探索モード"
                 aria-pressed={isExplore}
                 title="探索モード"
-                className={`grid h-[var(--btn-h)] w-[var(--btn-h)] place-items-center rounded-full transition-colors ${isExplore ? 'bg-white text-black shadow-sm' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
+                className={`relative grid h-[var(--btn-h)] w-[var(--btn-h)] place-items-center rounded-full transition-colors duration-300 ${isExplore ? 'text-black' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}
             >
                 <MapIcon className="h-5 w-5" aria-hidden="true" />
             </button>
@@ -29,7 +36,7 @@ export function MapModeToggle({ mode, onModeChange, className = '' }: MapModeTog
                 aria-label="投稿モード"
                 aria-pressed={!isExplore}
                 title="投稿モード"
-                className={`grid h-[var(--btn-h)] w-[var(--btn-h)] place-items-center rounded-full bg-violet-700 text-white shadow-sm transition-colors hover:bg-violet-600 ${!isExplore ? 'ring-2 ring-white/90' : ''}`}
+                className={`relative grid h-[var(--btn-h)] w-[var(--btn-h)] place-items-center rounded-full transition-colors duration-300 ${!isExplore ? 'text-white' : 'text-violet-300 hover:bg-white/10 hover:text-violet-200'}`}
             >
                 <Sparkle className="h-5 w-5" aria-hidden="true" />
             </button>

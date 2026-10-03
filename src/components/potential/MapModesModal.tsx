@@ -154,7 +154,7 @@ export function MapModesModal({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="map-modes-title"
-                className={`max-h-full w-full max-w-[540px] overflow-y-auto rounded-[28px] ${glassSurface} p-4 sm:p-5`}
+                className={`max-h-full w-full max-w-[540px] overflow-y-auto rounded-[28px] ${glassSurface} p-4 animate-ui-pop sm:p-5`}
                 onMouseDown={(event) => event.stopPropagation()}
             >
                 <header className="flex items-center justify-between gap-3">

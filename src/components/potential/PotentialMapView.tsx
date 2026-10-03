@@ -464,8 +464,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         <div className="h-full w-full text-white">
             <div className="relative h-full w-full">
                 {isCompassModeOpen && (
+                    // カードは地図の上にわずかに拡大しながら現れる（起点はミニコンパスのある左上）
                     <div
-                        className="absolute z-[4500]"
+                        className="absolute z-[4500] origin-top-left animate-ui-pop"
                         style={isLandscape
                             ? { top: 16, bottom: 16, left: 'max(16px, env(safe-area-inset-left))', width: `${COMPASS_CARD_LANDSCAPE_WIDTH * 100}%` }
                             : { left: 16, right: 16, top: 'calc(16px + env(safe-area-inset-top))', height: `${COMPASS_CARD_PORTRAIT_HEIGHT * 100}%` }}
@@ -520,7 +521,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     <MapModeToggle
                         mode={mode}
                         onModeChange={onModeChange}
-                        className="absolute right-4 top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[5000]"
+                        className="absolute animate-ui-drop right-4 top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[5000]"
                     />
                 )}
 
@@ -583,8 +584,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         resultsPlacement={isMobileViewport ? 'above' : 'below'}
                         style={isMobileViewport ? { bottom: SPLIT_CONTROL_BOTTOM } : { width: DESKTOP_SEARCH_WIDTH }}
                         className={isMobileViewport
-                            ? 'absolute left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] z-[4600]'
-                            : 'absolute left-[max(1rem,env(safe-area-inset-left))] top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[4600]'}
+                            ? 'absolute left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] z-[4600] animate-ui-rise'
+                            : 'absolute left-[max(1rem,env(safe-area-inset-left))] top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[4600] animate-ui-drop'}
                     />
                 )}
 
