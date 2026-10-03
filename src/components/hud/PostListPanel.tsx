@@ -1,13 +1,15 @@
 import type { Post } from '../../lib/postsApi';
-import { Inbox, Image as ImageIcon, MapPin } from '../ui/icons';
+import { Inbox, Image as ImageIcon, Lock, MapPin } from '../ui/icons';
 
 type PostListPanelProps = {
     posts: Post[];
     isLoading?: boolean;
     onPostClick: (post: Post) => void;
+    // まだ着いていない投稿は、写真と正確な場所名を伏せる（lib/postReveal.ts）。渡されないときは全部見せる
+    isUnlocked?: (post: Post) => boolean;
 };
 
-export function PostListPanel({ posts, isLoading, onPostClick }: PostListPanelProps) {
+export function PostListPanel({ posts, isLoading, onPostClick, isUnlocked = () => true }: PostListPanelProps) {
     if (isLoading) {
         return <div className="p-8 text-center text-white/50 text-sm">読み込み中...</div>;
     }
@@ -32,7 +34,9 @@ export function PostListPanel({ posts, isLoading, onPostClick }: PostListPanelPr
             </div>
 
             <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {posts.map((post) => (
+                {posts.map((post) => {
+                    const unlocked = isUnlocked(post);
+                    return (
                     <div 
                         key={post.id}
                         onClick={() => onPostClick(post)}
@@ -41,7 +45,9 @@ export function PostListPanel({ posts, isLoading, onPostClick }: PostListPanelPr
                         <div className="flex gap-3">
                             {/* Thumbnail or Icon */}
                             <div className="w-16 h-16 shrink-0 bg-black/40 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center">
-                                {post.photos?.[0]?.url ? (
+                                {!unlocked ? (
+                                    <Lock className="w-6 h-6 text-violet-200/70" aria-label="まだ着いていない投稿" />
+                                ) : post.photos?.[0]?.url ? (
                                     <img 
                                         src={post.photos[0].url} 
                                         alt="投稿画像" 
@@ -72,7 +78,9 @@ export function PostListPanel({ posts, isLoading, onPostClick }: PostListPanelPr
                                 <div className="flex items-center gap-1.5 text-[10px] text-white/40">
                                     <MapPin className="w-3 h-3" />
                                     <span className="truncate max-w-[120px]">
-                                        {post.location.placeName || post.location.area || '場所不明'}
+                                        {unlocked
+                                            ? post.location.placeName || post.location.area || '場所不明'
+                                            : `${post.location.area || 'この辺り'} 付近`}
                                     </span>
                                     <span>•</span>
                                     <span>{new Date(post.createdAt).toLocaleDateString()}</span>
@@ -80,7 +88,8 @@ export function PostListPanel({ posts, isLoading, onPostClick }: PostListPanelPr
                             </div>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

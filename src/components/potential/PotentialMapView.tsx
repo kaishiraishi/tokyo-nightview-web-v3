@@ -21,10 +21,12 @@ import {
     readStoredDebugMode,
     readStoredHeadingSensor,
     readStoredPotentialScope,
+    readStoredRevealAllPosts,
     writeStoredBuildingsEnabled,
     writeStoredDebugMode,
     writeStoredHeadingSensor,
     writeStoredPotentialScope,
+    writeStoredRevealAllPosts,
     type PotentialDisplayScope,
 } from '../../lib/storedSettings';
 import { type PotentialRange } from './prototypes/types';
@@ -42,6 +44,8 @@ import { useRangeRings } from '../../hooks/useRangeRings';
 import { useCompassTarget } from '../../hooks/useCompassTarget';
 import { useSearchResultMarker, type SearchResultPlace } from '../../hooks/useSearchResultMarker';
 import { useFavorites } from '../../hooks/useFavorites';
+import { usePostReveal } from '../../hooks/usePostReveal';
+import { approximateArea } from '../../lib/postReveal';
 import { favoriteId, type FavoritePlace } from '../../lib/favorites';
 import type { PolarPick } from './prototypes/PolarHeatmap';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
@@ -298,7 +302,37 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         const name = post.location.placeName || post.caption || '投稿の場所';
         addFavorite({ name, lng: post.location.lng, lat: post.location.lat });
     }, [addFavorite, favoriteIds, removeFavorite]);
-    usePostPopups(map, isLoaded, posts, isPostMode, favoriteIds, handleTogglePostFavorite);
+    // 投稿は着くまで場所が分からない: 本当の地点から 100m 以内に入ったら解放する。
+    // 確認用に、デバッグモードの中のスイッチで全部を解放して見られる（既定 OFF）
+    const [revealAllPosts, setRevealAllPosts] = useState(() => readStoredRevealAllPosts());
+    const handleRevealAllPostsChange = useCallback((enabled: boolean) => {
+        setRevealAllPosts(writeStoredRevealAllPosts(enabled));
+    }, []);
+    const [revealNotice, setRevealNotice] = useState<string | null>(null);
+    const handlePostsUnlocked = useCallback((arrived: Post[]) => {
+        const first = arrived[0];
+        setRevealNotice(arrived.length === 1
+            ? `投稿の場所に着きました: ${first.location.placeName || first.caption}`
+            : `${arrived.length} 件の投稿の場所に着きました`);
+    }, []);
+    useEffect(() => {
+        if (!revealNotice) return;
+        const timer = window.setTimeout(() => setRevealNotice(null), 5000);
+        return () => window.clearTimeout(timer);
+    }, [revealNotice]);
+    const { isUnlocked } = usePostReveal(posts, currentLocation, debugMode && revealAllPosts, handlePostsUnlocked);
+    usePostPopups(map, isLoaded, posts, isPostMode, favoriteIds, handleTogglePostFavorite, isUnlocked, currentLocation);
+
+    // 投稿一覧から選んだとき: 解放済みは本当の地点へ、まだの投稿はだいたいの場所の円が収まるように動かす
+    const handlePostListClick = useCallback((post: Post) => {
+        if (isUnlocked(post)) {
+            map?.flyTo({ center: [post.location.lng, post.location.lat], zoom: 16, duration: 1200 });
+        } else {
+            const { center } = approximateArea(post);
+            map?.flyTo({ center: [center.lng, center.lat], zoom: 14.5, duration: 1200 });
+        }
+        if (isMobileViewport) setMobileSheetLevel('collapsed');
+    }, [isMobileViewport, isUnlocked, map]);
 
     // お気に入りの一覧から選んだら、その地点へ動かして検索結果と同じピン（お気に入りの解除もできる）を立てる
     const handleSelectFavorite = useCallback((favorite: FavoritePlace) => {
@@ -559,6 +593,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     onPanelViewChange={handlePanelViewChange}
                     debugMode={debugMode}
                     onDebugModeChange={handleDebugModeChange}
+                    revealAllPosts={revealAllPosts}
+                    onRevealAllPostsChange={handleRevealAllPostsChange}
                     buildingsEnabled={buildingsEnabled}
                     onBuildingsEnabledChange={handleBuildingsEnabledChange}
                     headingSensorOn={headingSensorOn}
@@ -567,6 +603,19 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                 />
 
                 <div className="pointer-events-none absolute left-4 right-4 top-[calc(84px+env(safe-area-inset-top))] z-[7000] flex flex-col gap-2 md:left-auto md:right-4 md:w-[520px]">
+                    {revealNotice && (
+                        <div role="status" className="pointer-events-auto flex items-center justify-between gap-2 rounded-full border border-violet-300/30 bg-violet-700/95 px-4 py-2 text-xs font-bold text-white shadow-lg animate-ui-drop">
+                            <span>{revealNotice}</span>
+                            <button
+                                type="button"
+                                onClick={() => setRevealNotice(null)}
+                                className="grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/20"
+                                aria-label="お知らせを閉じる"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
                     {locateError && (
                         <div className="pointer-events-auto flex items-center justify-between gap-2 rounded-full border border-white/20 bg-red-500/95 px-4 py-2 text-xs font-bold text-white shadow-lg">
                             <span>{locateError}</span>
@@ -646,10 +695,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                                 <div className="min-h-0 flex-1 overflow-y-auto">
                                     <PostListPanel
                                         posts={posts}
-                                        onPostClick={(post) => {
-                                            map?.flyTo({ center: [post.location.lng, post.location.lat], zoom: 16, duration: 1200 });
-                                            if (isMobileViewport) setMobileSheetLevel('collapsed');
-                                        }}
+                                        isUnlocked={isUnlocked}
+                                        onPostClick={handlePostListClick}
                                     />
                                 </div>
                             )}

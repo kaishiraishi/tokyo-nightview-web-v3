@@ -57,3 +57,8 @@ export function writeStoredPotentialScope(scope: PotentialDisplayScope): Potenti
 const HEADING_SENSOR_STORAGE_KEY = 'nightview.headingSensor';
 export const readStoredHeadingSensor = () => readStoredFlag(HEADING_SENSOR_STORAGE_KEY, true);
 export const writeStoredHeadingSensor = (enabled: boolean) => writeStoredFlag(HEADING_SENSOR_STORAGE_KEY, enabled);
+
+// 確認用: 着いていない投稿も全部解放して見る（デバッグモードの中のスイッチ）。既定は OFF
+const REVEAL_ALL_POSTS_STORAGE_KEY = 'nightview.revealAllPosts';
+export const readStoredRevealAllPosts = () => readStoredFlag(REVEAL_ALL_POSTS_STORAGE_KEY, false);
+export const writeStoredRevealAllPosts = (enabled: boolean) => writeStoredFlag(REVEAL_ALL_POSTS_STORAGE_KEY, enabled);

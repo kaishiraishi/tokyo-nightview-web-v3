@@ -43,6 +43,9 @@ type AppMenuProps = {
   onPanelViewChange?: (panelView: PanelView) => void;
   debugMode?: boolean;
   onDebugModeChange?: (enabled: boolean) => void;
+  // 確認用: 着いていない投稿も全部見る（デバッグモードのときだけ出す）
+  revealAllPosts?: boolean;
+  onRevealAllPostsChange?: (enabled: boolean) => void;
   buildingsEnabled?: boolean;
   onBuildingsEnabledChange?: (enabled: boolean) => void;
   headingSensorOn?: boolean;
@@ -68,6 +71,8 @@ export function AppMenu({
   onPanelViewChange,
   debugMode,
   onDebugModeChange,
+  revealAllPosts,
+  onRevealAllPostsChange,
   buildingsEnabled,
   onBuildingsEnabledChange,
   headingSensorOn,
@@ -258,6 +263,15 @@ export function AppMenu({
                     description="地図をタップしてピンを立て、その地点を調べられます（ストリートビューへのリンクも出ます）。オフでは現在地が中心です。"
                     checked={debugMode}
                     onChange={onDebugModeChange}
+                  />
+                )}
+
+                {debugMode && revealAllPosts !== undefined && onRevealAllPostsChange !== undefined && (
+                  <SettingSwitch
+                    title="すべての投稿を見る（確認用）"
+                    description="投稿は、その場所の 100m 以内に着くまで写真と正確な場所が隠れます。オンにすると、着いていない投稿もすべて見られます。"
+                    checked={revealAllPosts}
+                    onChange={onRevealAllPostsChange}
                   />
                 )}
 

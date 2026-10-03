@@ -135,6 +135,27 @@ body {
 }
 
 /* 場所（左）と投稿者（右）を 1 行にまとめる */
+/* 着く前の投稿カード（写真なし）。距離は控えめなピル、解放の条件は小さく */
+.night-popup-locked {
+    width: 232px;
+    padding: 12px;
+}
+.night-popup-away {
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: rgba(139, 92, 246, 0.22);
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgb(237, 233, 254);
+    font-variant-numeric: tabular-nums;
+}
+.night-popup-hint {
+    font-size: 10px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.5);
+}
+
 .night-popup-meta-row {
     display: flex;
     align-items: baseline;
