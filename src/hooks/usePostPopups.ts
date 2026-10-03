@@ -17,13 +17,13 @@ function escapeHtml(s: string): string {
 function buildPopupHtml(post: Post, expanded: boolean): string {
     const caption = escapeHtml(post.caption ?? '');
     if (!expanded) {
-        return `<div class="night-popup-card night-popup-simple"><div class="night-popup-caption" style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${caption}</div></div>`;
+        return `<div class="night-popup-card night-popup-simple"><div class="night-popup-caption" style="display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;">${caption}</div></div>`;
     }
     const placeName = escapeHtml(post.location.placeName ?? '');
     const areaText = post.location.area ? `・${escapeHtml(post.location.area)}` : '';
     const authorName = post.author?.name ? `<div class="night-popup-author">@${escapeHtml(post.author.name)}</div>` : '';
     const photoUrl = post.photos?.[0]?.url ?? '';
-    return `<div class="night-popup-card">${photoUrl ? `<img class="night-popup-img" src="${escapeHtml(photoUrl)}" alt="" loading="lazy" decoding="async" width="240" height="132" />` : ''}<div class="night-popup-caption">${caption}</div><div class="night-popup-meta">${placeName}${areaText}</div>${authorName}</div>`;
+    return `<div class="night-popup-card">${photoUrl ? `<img class="night-popup-img" src="${escapeHtml(photoUrl)}" alt="" loading="lazy" decoding="async" width="232" height="131" />` : ''}<div class="night-popup-text"><div class="night-popup-caption">${caption}</div><div class="night-popup-meta-row"><span class="night-popup-meta">${placeName}${areaText}</span>${authorName}</div></div></div>`;
 }
 
 // 投稿を MapLibre のポップアップとして地図に重ねる。enabled が false の間は何も残さない。
