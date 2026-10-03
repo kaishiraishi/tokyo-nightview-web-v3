@@ -37,6 +37,7 @@ import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { usePixelInspector } from '../../hooks/usePixelInspector';
 import { useRangeRings } from '../../hooks/useRangeRings';
 import { useCompassTarget } from '../../hooks/useCompassTarget';
+import { useSearchResultMarker, type SearchResultPlace } from '../../hooks/useSearchResultMarker';
 import type { PolarPick } from './prototypes/PolarHeatmap';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import { normalizeAngle } from '../../lib/heading';
@@ -104,6 +105,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     // コンパスの文字盤でタップした位置（地図にも同じ地点を出す）
     const [compassTarget, setCompassTarget] = useState<PolarPick | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    // 検索結果を選んだ地点（ピンを立てる）。検索欄を空にすると消す
+    const [searchPlace, setSearchPlace] = useState<SearchResultPlace | null>(null);
     const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showResults, setShowResults] = useState(false);
@@ -270,10 +273,18 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         setIsSearching(false);
     }, []);
 
+    const handleSearchChange = useCallback((query: string) => {
+        setSearchQuery(query);
+        if (query === '') setSearchPlace(null);
+    }, []);
+    useSearchResultMarker(map, searchPlace);
+
     const handleSelectResult = useCallback((result: GeocodingResult) => {
         // 街区が見分けられる程度まで寄る（z13 では市区町村全体が入り、どこに着いたか分かりにくかった）
         map?.flyTo({ center: [result.lng, result.lat], zoom: SEARCH_RESULT_ZOOM, duration: 1200 });
-        setSearchQuery(result.displayName.split(',')[0]);
+        const name = result.displayName.split(',')[0];
+        setSearchQuery(name);
+        setSearchPlace({ lng: result.lng, lat: result.lat, name });
         setShowResults(false);
         // 投稿モードのシートは検索結果を見せるために広げている。選んだら、飛んだ先の地図が見えるよう閉じる
         if (isMobileViewport && isPostMode) setMobileSheetLevel('collapsed');
@@ -497,7 +508,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     <FloatingSearchBar
                         onOpenMenu={() => setIsMenuOpen(true)}
                         searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
+                        onSearchChange={handleSearchChange}
                         onSearchSubmit={handleSearchSubmit}
                         isSearching={isSearching}
                         searchResults={searchResults}
@@ -540,7 +551,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                                 </button>
                                 <SearchField
                                     searchQuery={searchQuery}
-                                    onSearchChange={setSearchQuery}
+                                    onSearchChange={handleSearchChange}
                                     onSearchSubmit={handleSearchSubmit}
                                     isSearching={isSearching}
                                     searchResults={searchResults}
