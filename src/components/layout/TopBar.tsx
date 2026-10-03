@@ -6,12 +6,6 @@ import { AppMenu } from '../menu/AppMenu';
 import type { FanConfig } from '../map/types';
 import { SearchField } from './SearchField';
 
-// Mock stats for the profile menu
-const MOCK_PROFILE_STATS = {
-    foundCount: 4,
-    favoriteCount: 3,
-};
-
 type TopBarProps = {
     mode: 'explore' | 'analyze';
     onModeChange: (mode: 'explore' | 'analyze') => void;
@@ -160,10 +154,6 @@ export function TopBar({
             <AppMenu 
                 isOpen={isMenuOpen}
                 onClose={() => setIsMenuOpen(false)}
-                displayName="KAZUNE"
-                memberId="No.0001"
-                foundCount={MOCK_PROFILE_STATS.foundCount}
-                favoriteCount={MOCK_PROFILE_STATS.favoriteCount}
                 postCount={postCount}
                 onViewPosts={onViewPosts}
                 fanConfig={fanConfig}

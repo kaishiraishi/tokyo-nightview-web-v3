@@ -47,3 +47,6 @@ export const MapFilled = createIcon('MapFilled', 'm600-120-240-84-186 72q-20 8-3
 export const Navigation = createIcon('Navigation', 'M516-120 402-402 120-516v-56l720-268-268 720h-56Zm26-148 162-436-436 162 196 78 78 196Zm-78-196Z');
 // Material Symbols に同形がないため、モックの 4 点スパークルを単純な曲線で描いた独自アイコン。
 export const Sparkle = createIcon('Sparkle', 'M480-800q22 240 280 320-258 80-280 320-22-240-280-320 258-80 280-320Z');
+export const HeartFilled = createIcon('HeartFilled', 'm480-121-41-37q-106-97-175-167.5t-110-126Q113-507 96.5-552T80-643q0-90 60.5-150.5T290-854q57 0 105.5 27t84.5 78q42-54 89-79.5T670-854q89 0 149.5 60.5T880-643q0 46-16.5 91T806-451.5q-41 55.5-110 126T521-158l-41 37Z');
+export const Trash = createIcon('Trash', 'M261-120q-24.75 0-42.37-17.63Q201-155.25 201-180v-570h-41v-60h188v-30h264v30h188v60h-41v570q0 24-18 42t-42 18H261Zm438-630H261v570h438v-570ZM367-266h60v-399h-60v399Zm166 0h60v-399h-60v399ZM261-750v570-570Z');
+export const Plus = createIcon('Plus', 'M450-450H200v-60h250v-250h60v250h250v60H510v250h-60v-250Z');

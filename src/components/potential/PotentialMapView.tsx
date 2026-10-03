@@ -40,18 +40,12 @@ import { usePixelInspector } from '../../hooks/usePixelInspector';
 import { useRangeRings } from '../../hooks/useRangeRings';
 import { useCompassTarget } from '../../hooks/useCompassTarget';
 import { useSearchResultMarker, type SearchResultPlace } from '../../hooks/useSearchResultMarker';
+import { useFavorites } from '../../hooks/useFavorites';
+import { favoriteId, type FavoritePlace } from '../../lib/favorites';
 import type { PolarPick } from './prototypes/PolarHeatmap';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import { normalizeAngle } from '../../lib/heading';
 import 'maplibre-gl/dist/maplibre-gl.css';
-
-// メニューのプロフィール表示用の仮データ（認証・プロフィールは Non-goals）
-const MENU_PROFILE = {
-    displayName: 'KAZUNE',
-    memberId: 'No.0001',
-    foundCount: 4,
-    favoriteCount: 3,
-};
 
 // 右下ボタン列（2 ボタン + 余白）の上に投稿ボタンを置くためのオフセット
 const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 24px)';
@@ -90,6 +84,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         accuracy: userAccuracy,
         start: startUserLocation,
         error: userLocationError,
+        status: userLocationStatus,
     } = useUserLocation();
     const deviceHeading = useDeviceHeading();
     const { start: startDeviceHeading, stop: stopDeviceHeading } = deviceHeading;
@@ -279,7 +274,51 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         setSearchQuery(query);
         if (query === '') setSearchPlace(null);
     }, []);
-    useSearchResultMarker(map, searchPlace);
+    const { favorites, add: addFavorite, remove: removeFavorite } = useFavorites();
+    const searchPlaceFavoriteId = searchPlace ? favoriteId(searchPlace.lng, searchPlace.lat) : null;
+    const isSearchPlaceFavorite = searchPlaceFavoriteId !== null && favorites.some((item) => item.id === searchPlaceFavoriteId);
+    const handleToggleSearchFavorite = useCallback((place: SearchResultPlace) => {
+        const id = favoriteId(place.lng, place.lat);
+        if (favorites.some((item) => item.id === id)) removeFavorite(id);
+        else addFavorite(place);
+    }, [addFavorite, favorites, removeFavorite]);
+    useSearchResultMarker(map, searchPlace, isSearchPlaceFavorite, handleToggleSearchFavorite);
+
+    // お気に入りの一覧から選んだら、その地点へ動かして検索結果と同じピン（お気に入りの解除もできる）を立てる
+    const handleSelectFavorite = useCallback((favorite: FavoritePlace) => {
+        map?.flyTo({ center: [favorite.lng, favorite.lat], zoom: SEARCH_RESULT_ZOOM, duration: 1200 });
+        setSearchQuery(favorite.name);
+        setSearchPlace({ lng: favorite.lng, lat: favorite.lat, name: favorite.name });
+        setShowResults(false);
+    }, [map]);
+
+    // 「現在地をお気に入りに追加」: 位置がまだなければ取得を始め、届いたときに追加する。取得に失敗したら待つのをやめる
+    // （理由は画面上部のエラー表示に出る）
+    const [isLocatingFavorite, setIsLocatingFavorite] = useState(false);
+    const [favoriteLocateError, setFavoriteLocateError] = useState<string | null>(null);
+    const addCurrentLocationFavorite = useCallback((location: MapLocation) => {
+        // 日時は一覧に「○○に保存」と出るので、名前には入れない
+        addFavorite({ ...location, name: '現在地で保存した場所' });
+    }, [addFavorite]);
+    const handleAddCurrentLocationFavorite = useCallback(() => {
+        setFavoriteLocateError(null);
+        if (currentLocation) {
+            addCurrentLocationFavorite(currentLocation);
+            return;
+        }
+        setIsLocatingFavorite(true);
+        startUserLocation();
+    }, [addCurrentLocationFavorite, currentLocation, startUserLocation]);
+    useEffect(() => {
+        if (!isLocatingFavorite) return;
+        if (currentLocation) {
+            addCurrentLocationFavorite(currentLocation);
+            setIsLocatingFavorite(false);
+        } else if (userLocationStatus === 'denied' || userLocationStatus === 'error' || userLocationStatus === 'unsupported') {
+            setIsLocatingFavorite(false);
+            setFavoriteLocateError(userLocationError ?? '現在地を取得できませんでした');
+        }
+    }, [addCurrentLocationFavorite, currentLocation, isLocatingFavorite, userLocationError, userLocationStatus]);
 
     const handleSelectResult = useCallback((result: GeocodingResult) => {
         // 街区が見分けられる程度まで寄る（z13 では市区町村全体が入り、どこに着いたか分かりにくかった）
@@ -485,11 +524,13 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                 <AppMenu
                     isOpen={isMenuOpen}
                     onClose={() => setIsMenuOpen(false)}
-                    displayName={MENU_PROFILE.displayName}
-                    memberId={MENU_PROFILE.memberId}
-                    foundCount={MENU_PROFILE.foundCount}
-                    favoriteCount={MENU_PROFILE.favoriteCount}
                     postCount={posts.length}
+                    favorites={favorites}
+                    onSelectFavorite={handleSelectFavorite}
+                    onRemoveFavorite={removeFavorite}
+                    onAddCurrentLocationFavorite={handleAddCurrentLocationFavorite}
+                    isLocatingFavorite={isLocatingFavorite}
+                    favoriteLocateError={favoriteLocateError}
                     onViewPosts={() => onModeChange('analyze')}
                     panelView={panelView}
                     onPanelViewChange={handlePanelViewChange}

@@ -1,30 +1,41 @@
 import {
   X,
   ChevronRight,
-  MapPin,
   Heart,
   Image,
   Settings,
   BookOpen,
-  History,
-  Mail,
-  User,
   ChevronLeft,
 } from '../ui/icons';
 import { type ReactNode, useState } from 'react';
 import type { FanConfig } from '../map/types';
 import { PanelViewSelector, type PanelView } from '../potential/PanelViewSelector';
+import type { FavoritePlace } from '../../lib/favorites';
+import { FavoritesView } from './FavoritesView';
+import { GuideView } from './GuideView';
 import { closeButton, glassSurface, textMuted, textPrimary } from '../../styles/ui';
 import buildings3dExample from '../../assets/settings/buildings-3d.webp';
+
+type MenuView = 'main' | 'settings' | 'favorites' | 'guide';
+
+const VIEW_TITLES: Record<MenuView, string> = {
+  main: 'メニュー',
+  settings: '設定',
+  favorites: 'お気に入り',
+  guide: 'はじめてガイド',
+};
 
 type AppMenuProps = {
   isOpen: boolean;
   onClose: () => void;
-  displayName: string;
-  memberId: string;
-  foundCount: number;
-  favoriteCount: number;
   postCount: number;
+  // お気に入り（端末内保存）。渡されないとき（旧 TopBar）はお気に入りの行を出さない
+  favorites?: FavoritePlace[];
+  onSelectFavorite?: (favorite: FavoritePlace) => void;
+  onRemoveFavorite?: (id: string) => void;
+  onAddCurrentLocationFavorite?: () => void;
+  isLocatingFavorite?: boolean;
+  favoriteLocateError?: string | null;
   onViewPosts?: () => void;
   fanConfig?: FanConfig;
   onFanConfigChange?: (config: FanConfig) => void;
@@ -43,11 +54,13 @@ type AppMenuProps = {
 export function AppMenu({
   isOpen,
   onClose,
-  displayName,
-  memberId,
-  foundCount,
-  favoriteCount,
   postCount,
+  favorites,
+  onSelectFavorite,
+  onRemoveFavorite,
+  onAddCurrentLocationFavorite,
+  isLocatingFavorite = false,
+  favoriteLocateError = null,
   onViewPosts,
   fanConfig,
   onFanConfigChange,
@@ -61,7 +74,7 @@ export function AppMenu({
   onHeadingSensorChange,
   headingSensorNote,
 }: AppMenuProps) {
-  const [activeView, setActiveView] = useState<'main' | 'settings'>('main');
+  const [activeView, setActiveView] = useState<MenuView>('main');
 
   if (!isOpen) return null;
 
@@ -70,6 +83,7 @@ export function AppMenu({
   const hasDebugModeSetting = debugMode !== undefined && onDebugModeChange !== undefined;
   const hasBuildingsSetting = buildingsEnabled !== undefined && onBuildingsEnabledChange !== undefined;
   const hasHeadingSensorSetting = headingSensorOn !== undefined && onHeadingSensorChange !== undefined;
+  const hasFavorites = favorites !== undefined && onSelectFavorite !== undefined && onRemoveFavorite !== undefined && onAddCurrentLocationFavorite !== undefined;
 
   const handleClose = () => {
     setActiveView('main');
@@ -89,7 +103,7 @@ export function AppMenu({
       <div className={`${glassSurface} relative w-full max-w-md overflow-hidden rounded-[28px] text-white animate-in fade-in zoom-in duration-200`}>
         <div className="flex max-h-[90vh] flex-col">
           <div className="relative flex items-center justify-center border-b border-white/10 px-6 py-5">
-            {activeView === 'settings' && (
+            {activeView !== 'main' && (
               <button
                 type="button"
                 onClick={() => setActiveView('main')}
@@ -100,7 +114,7 @@ export function AppMenu({
               </button>
             )}
             <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>
-              {activeView === 'main' ? 'メニュー' : '設定'}
+              {VIEW_TITLES[activeView]}
             </h2>
             <button
               type="button"
@@ -116,60 +130,54 @@ export function AppMenu({
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar">
-            {activeView === 'main' ? (
-              <>
-                <div className="mb-6 flex items-center gap-4 px-2">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-xl font-bold ${textPrimary}`}>
-                    {displayName?.charAt(0) || <User size={24} />}
-                  </div>
-                  <div>
-                    <div className={`text-base font-semibold ${textPrimary}`}>{displayName}</div>
-                    <div className={`text-xs ${textMuted}`}>Member ID: {memberId}</div>
-                  </div>
-                </div>
-
-                <div className="mb-8 rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6">
-                  <div className="flex justify-around text-center">
-                    <div className="flex flex-col items-center">
-                      <div className={`text-3xl font-black tabular-nums tracking-tighter ${textPrimary}`}>{foundCount}</div>
-                      <div className={`text-[10px] font-extrabold uppercase tracking-[0.2em] ${textMuted}`}>発見</div>
-                    </div>
-                    <div className="h-12 w-px self-center bg-white/10" />
-                    <div className="flex flex-col items-center">
-                      <div className={`text-3xl font-black tabular-nums tracking-tighter ${textPrimary}`}>{favoriteCount}</div>
-                      <div className={`text-[10px] font-extrabold uppercase tracking-[0.2em] ${textMuted}`}>お気に入り</div>
-                    </div>
-                    <div className="h-12 w-px self-center bg-white/10" />
-                    <div className="flex flex-col items-center">
-                      <div className={`text-3xl font-black tabular-nums tracking-tighter ${textPrimary}`}>{postCount}</div>
-                      <div className={`text-[10px] font-extrabold uppercase tracking-[0.2em] ${textMuted}`}>投稿</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-6 overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.03] shadow-inner">
-                  <MenuRow icon={<MapPin size={20} className={textMuted} />} label="最近見つけた夜景" value={foundCount} />
-                  <MenuRow icon={<Heart size={20} className={textMuted} />} label="お気に入り" value={favoriteCount} />
+            {activeView === 'main' && (
+              // アカウントがないので、プロフィールや架空の数字は出さない。数字は実際の件数だけ
+              <div className="space-y-6">
+                <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.03] shadow-inner">
+                  {hasFavorites && (
+                    <MenuRow
+                      icon={<Heart size={20} className={textMuted} />}
+                      label="お気に入り"
+                      value={favorites.length}
+                      onClick={() => setActiveView('favorites')}
+                    />
+                  )}
                   <MenuRow
                     icon={<Image size={20} className={textMuted} />}
-                    label="投稿"
+                    label="投稿を見る"
                     value={postCount}
                     onClick={() => {
                       onViewPosts?.();
-                      onClose();
+                      handleClose();
                     }}
                     isLast
                   />
                 </div>
 
                 <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.03] shadow-inner">
-                  <MenuRow icon={<Settings size={20} className={textMuted} />} label="設定" onClick={() => setActiveView('settings')} />
-                  <MenuRow icon={<BookOpen size={20} className={textMuted} />} label="はじめてガイド" />
-                  <MenuRow icon={<History size={20} className={textMuted} />} label="利用履歴" status="未完了" />
-                  <MenuRow icon={<Mail size={20} className={textMuted} />} label="お問い合わせ" status="未完了" isLast />
+                  <MenuRow icon={<BookOpen size={20} className={textMuted} />} label="はじめてガイド" onClick={() => setActiveView('guide')} />
+                  <MenuRow icon={<Settings size={20} className={textMuted} />} label="設定" onClick={() => setActiveView('settings')} isLast />
                 </div>
-              </>
-            ) : (
+              </div>
+            )}
+
+            {activeView === 'favorites' && hasFavorites && (
+              <FavoritesView
+                favorites={favorites}
+                onSelect={(favorite) => {
+                  onSelectFavorite(favorite);
+                  handleClose();
+                }}
+                onRemove={onRemoveFavorite}
+                onAddCurrentLocation={onAddCurrentLocationFavorite}
+                isLocating={isLocatingFavorite}
+                locateError={favoriteLocateError}
+              />
+            )}
+
+            {activeView === 'guide' && <GuideView />}
+
+            {activeView === 'settings' && (
               <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
                 {hasFanConfigSetting && (
                   <section>
@@ -272,7 +280,7 @@ export function AppMenu({
             )}
 
             <div className={`mt-8 text-center text-[10px] uppercase tracking-[0.2em] ${textMuted}`}>
-              Tokyo Nightview Web v2
+              Tokyo Nightview
             </div>
           </div>
         </div>
@@ -332,14 +340,12 @@ function MenuRow({
   icon,
   label,
   value,
-  status,
   isLast,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
   value?: number;
-  status?: string;
   isLast?: boolean;
   onClick?: () => void;
 }) {
@@ -353,7 +359,6 @@ function MenuRow({
       <span className={`flex-1 text-sm font-medium ${textPrimary}`}>{label}</span>
       <div className="flex items-center gap-2">
         {value !== undefined && <span className={`text-sm font-semibold ${textMuted}`}>{value}</span>}
-        {status && <span className={`rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold ${textMuted}`}>{status}</span>}
         <ChevronRight size={16} className={textMuted} />
       </div>
     </button>

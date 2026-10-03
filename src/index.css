@@ -224,5 +224,11 @@ body {
 .debug-popup-link { display: flex; min-height: 44px; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid rgba(125, 211, 252, 0.25); background: rgba(125, 211, 252, 0.08); padding: 8px 12px; font-size: 12px; font-weight: 600; color: rgb(224, 242, 254); text-decoration: none; }
 .debug-popup-link:hover { border-color: rgba(186, 230, 253, 0.5); background: rgba(125, 211, 252, 0.14); }
 .debug-popup-note { margin: 0; font-size: 10px; line-height: 1.6; color: rgba(255, 255, 255, 0.45); }
+/* 検索結果・お気に入りのピンのポップアップ。お気に入り登録済みは選択中の紫で塗る */
+.search-popup-title { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; color: rgba(255, 255, 255, 0.92); }
+.search-popup-favorite { display: flex; min-height: 44px; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid rgba(196, 181, 253, 0.35); background: rgba(255, 255, 255, 0.04); padding: 8px 12px; font-size: 12px; font-weight: 600; color: rgb(237, 233, 254); cursor: pointer; }
+.search-popup-favorite:hover { background: rgba(196, 181, 253, 0.12); }
+.search-popup-favorite[aria-pressed="true"] { border-color: transparent; background: rgba(109, 40, 217, 0.85); color: #fff; }
+.search-popup-favorite:focus-visible { outline: 2px solid rgba(196, 181, 253, 0.8); outline-offset: 2px; }
 .pixel-inspector-strong { font-size: 13px; font-weight: 700; color: #fff; }
 .pixel-inspector-note { margin-top: 4px; font-size: 10px; color: rgba(255, 255, 255, 0.4); }
