@@ -62,7 +62,8 @@ export function DataAndAboutSettings({ favorites }: { favorites: FavoritePlace[]
                     </button>
                 </div>
                 <p className={`mt-2 px-2 text-[11px] leading-relaxed ${textMuted}`}>
-                    現在地と端末の向きは、地図とコンパスの表示・投稿に着いたかの判定にだけ使い、保存・送信しません。
+                    端末の向きは画面の表示にだけ使い、保存・送信しません。現在地は、地図とコンパスの表示・投稿に着いたかの判定に使い、
+                    投稿したとき（その投稿の場所として送信）と「現在地をお気に入りに追加」したとき（この端末に保存）だけ残ります。
                     お気に入り・着いた投稿・設定はこの端末のブラウザにだけ保存されます。
                 </p>
             </section>

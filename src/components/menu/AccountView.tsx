@@ -56,7 +56,7 @@ export function AccountView() {
                     <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
                         <div className="flex items-center gap-3">
                             <div className={`grid h-12 w-12 place-items-center rounded-full bg-violet-700/60 text-lg font-bold ${textPrimary}`} aria-hidden="true">
-                                {account.displayName.charAt(0)}
+                                {Array.from(account.displayName)[0]}
                             </div>
                             <div className="min-w-0">
                                 <p className={`truncate text-base font-semibold ${textPrimary}`}>{account.displayName}</p>

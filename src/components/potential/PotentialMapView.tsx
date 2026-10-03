@@ -320,7 +320,11 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         const timer = window.setTimeout(() => setRevealNotice(null), 5000);
         return () => window.clearTimeout(timer);
     }, [revealNotice]);
-    const { isUnlocked } = usePostReveal(posts, currentLocation, debugMode && revealAllPosts, handlePostsUnlocked);
+    const { isUnlocked } = usePostReveal(posts, currentLocation, userAccuracy ?? null, isPostMode, debugMode && revealAllPosts, handlePostsUnlocked);
+    // 投稿モードでは、着いたかの判定と距離の表示のために現在地の取得を始める
+    useEffect(() => {
+        if (isPostMode) startUserLocation();
+    }, [isPostMode, startUserLocation]);
     usePostPopups(map, isLoaded, posts, isPostMode, favoriteIds, handleTogglePostFavorite, isUnlocked, currentLocation);
 
     // 投稿一覧から選んだとき: 解放済みは本当の地点へ、まだの投稿はだいたいの場所の円が収まるように動かす

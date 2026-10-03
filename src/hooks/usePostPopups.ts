@@ -43,7 +43,9 @@ function buildPopupHtml(post: Post, expanded: boolean, isFavorite: boolean): str
 function buildLockedHtml(post: Post, distance: number | null): string {
     const caption = escapeHtml(post.caption ?? '');
     const area = escapeHtml(post.location.area ?? 'この辺り');
-    const away = distance === null ? '' : `<span class="night-popup-away">ここから約 ${formatDistanceAway(distance)}</span>`;
+    const away = distance === null
+        ? '<span class="night-popup-hint">現在地がわかると距離が出ます</span>'
+        : `<span class="night-popup-away">ここから約 ${formatDistanceAway(distance)}</span>`;
     return `<div class="night-popup-card night-popup-locked"><div class="night-popup-caption">${caption}</div><div class="night-popup-meta-row"><span class="night-popup-meta">${area} 付近</span>${away}</div><div class="night-popup-hint">${UNLOCK_RADIUS_M}m 以内に近づくと、写真と正確な場所がわかります</div></div>`;
 }
 
