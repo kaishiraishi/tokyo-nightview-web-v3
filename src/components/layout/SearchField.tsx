@@ -12,8 +12,9 @@ type SearchFieldProps = {
     onCloseResults: () => void;
     onFocusSearch: () => void;
     variant?: 'top' | 'sheet' | 'side' | 'floating';
-    // 検索結果を欄の下に出すか上に出すか（画面下に浮かぶ検索バーでは上に出す）
-    resultsPlacement?: 'below' | 'above';
+    // 検索結果を欄の下に出すか上に出すか。below-screen は、狭い検索バーでも読めるよう画面幅いっぱい（左右 16px）に
+    // 広げて下に出す（スマホの探索モード。バーの左右の位置は PotentialMapView の SEARCH_BAR_LEFT / MOBILE_SEARCH_BAR_RIGHT）
+    resultsPlacement?: 'below' | 'above' | 'below-screen';
 };
 
 const variantClasses = {
@@ -33,11 +34,20 @@ const variantClasses = {
         placeholder: '場所を検索',
     },
     // FloatingSearchBar のピルの中に置く。面と枠はピル側（glassControl）が持つので、欄自体は透明
+    // 上の帯に収める（スマホでは幅が 180px 前後）ので、余白を詰め、右端の飾りのピンは出さない
     floating: {
-        field: 'rounded-full px-3',
+        field: 'rounded-full gap-2 px-2',
         height: 'h-[var(--btn-h)]',
         placeholder: '場所を検索',
     },
+} as const;
+
+const RESULTS_PLACEMENT_CLASSES = {
+    below: 'absolute left-0 right-0 top-[calc(100%+8px)] animate-ui-drop',
+    above: 'absolute left-0 right-0 bottom-[calc(100%+8px)] animate-ui-rise',
+    // 外側のピルはぼかし（backdrop-filter）を持つので position: fixed は画面基準にならない。ピルからの相対で、
+    // 左はミニコンパスの分（88px − 16px）、右はモード切替の分（--btn-h × 2 + 18px）だけ外へ広げる
+    'below-screen': 'absolute left-[-72px] right-[calc(var(--btn-h)*-2-18px)] top-[calc(100%+8px)] animate-ui-drop',
 } as const;
 
 export function SearchField({
@@ -58,8 +68,9 @@ export function SearchField({
     return (
         // floating では位置の基準を外側のピルにして、検索結果をピル全体の幅で出す
         <div className={`group z-20 w-full min-w-0 flex-1 ${variant === 'floating' ? '' : 'relative'}`}>
-            <div className={`flex w-full items-center gap-3 transition-colors ${classes.field} ${classes.height}`}>
-                <Search className="h-5 w-5 shrink-0 text-white/50" aria-hidden="true" />
+            <div className={`flex w-full items-center ${variant === 'floating' ? '' : 'gap-3'} transition-colors ${classes.field} ${classes.height}`}>
+                {/* 上の帯のバーはスマホでは幅が狭いので、虫めがねは出さない（案内文「場所を検索」で伝わる） */}
+                <Search className={`h-5 w-5 shrink-0 text-white/50 ${variant === 'floating' ? 'max-md:hidden' : ''}`} aria-hidden="true" />
                 <input
                     // 16px 未満だと iOS Safari がフォーカス時に画面を拡大するので、スマホは 16px にする
                     // ブラウザ標準の消去ボタンは隠す（右側に独自の × を出すので二重になる）
@@ -89,14 +100,14 @@ export function SearchField({
                     >
                         <X className="h-4 w-4" aria-hidden="true" />
                     </button>
-                ) : (
+                ) : variant === 'floating' ? null : (
                     <MapPin className="h-4 w-4 shrink-0 text-white/25" aria-hidden="true" />
                 )}
             </div>
 
             {showResults && searchResults.length > 0 && (
                 <div
-                    className={`absolute left-0 right-0 ${resultsPlacement === 'above' ? 'bottom-[calc(100%+8px)] animate-ui-rise' : 'top-[calc(100%+8px)] animate-ui-drop'} overflow-hidden rounded-2xl border border-white/15 bg-[#05070b]/95 shadow-2xl backdrop-blur-xl`}
+                    className={`${RESULTS_PLACEMENT_CLASSES[resultsPlacement]} overflow-hidden rounded-2xl border border-white/15 bg-[#05070b]/95 shadow-2xl backdrop-blur-xl`}
                     onMouseLeave={onCloseResults}
                 >
                     <div className="max-h-[42dvh] overflow-y-auto py-2">

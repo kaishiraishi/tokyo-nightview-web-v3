@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import { User } from '../ui/icons';
 import { LayerMenu } from '../layout/LayerMenu';
@@ -54,11 +54,13 @@ const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 13px)';
 
 // シートがないとき（コンパスモード中・探索モードのスマホ）は、地図下端の出典表示（2 行になることがある）の上に部品を置く
 const SPLIT_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom))';
-// 探索モードのスマホは、画面下に浮かぶ検索バー（高さ --btn-h + 10px）の上 12px にボタン列を置く
-const MOBILE_SEARCH_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom) + var(--btn-h) + 22px)';
 // 検索結果を選んだときのズーム
 const SEARCH_RESULT_ZOOM = 15;
-// PC の探索モードの検索バーの幅。ミニコンパスはその右に置く（16px + 幅 + 12px）
+// 探索モードの上の帯: 左にミニコンパス（64px）、その右に検索バー、右端にモード切替。
+// 検索バーの左端 = 16px + 64px + 8px。スマホはモード切替（幅 --btn-h × 2 + 余白 8px + 枠 2px）の手前 8px まで伸ばし、
+// PC は幅 360px に留める
+const SEARCH_BAR_LEFT = 'calc(88px + env(safe-area-inset-left))';
+const MOBILE_SEARCH_BAR_RIGHT = 'calc(16px + var(--btn-h) * 2 + 18px + env(safe-area-inset-right))';
 const DESKTOP_SEARCH_WIDTH = 360;
 
 // コンパスモードのカードは地図の上に浮かべる。横長は左（地図の幅の割合）、縦長は上（地図の高さの割合）。
@@ -514,10 +516,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
 
                 {/* ミニコンパスは探索・投稿の両モードで出す（分割表示中は上半分に本体があるので隠す） */}
                 {!isCompassModeOpen && (
-                    // PC の左上は、探索モードでは検索バーの右、投稿モードではサイドパネルの右に置く
+                    // 左上。PC の投稿モードではサイドパネルの右に置く
                     <div
-                        className={`absolute left-4 top-[calc(16px+env(safe-area-inset-top))] z-[4500] transition-[left] duration-300 ${!isPostMode ? 'md:left-[var(--mini-compass-left)]' : isDesktopLayerMenuOpen ? 'md:left-[352px]' : ''}`}
-                        style={{ '--mini-compass-left': `${16 + DESKTOP_SEARCH_WIDTH + 12}px` } as CSSProperties}
+                        className={`absolute left-4 top-[calc(16px+env(safe-area-inset-top))] z-[4500] transition-[left] duration-300 ${isPostMode && isDesktopLayerMenuOpen ? 'md:left-[352px]' : ''}`}
                     >
                         <MiniCompass
                             data={compassViewModel}
@@ -581,8 +582,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     )}
                 </div>
 
-                {/* 探索モードは面を持たない浮かぶ検索バー（PC: 左上、ミニコンパスと縦の中心を揃える / スマホ: 画面下）。
-                    コンパスモード中は地図側を広く使うため隠す */}
+                {/* 探索モードは面を持たない浮かぶ検索バー。上の帯のミニコンパスとモード切替のあいだに置き、縦の中心を揃える。
+                    検索結果は、スマホでは画面幅いっぱい、PC ではバーの幅で下に開く。コンパスモード中は地図側を広く使うため隠す */}
                 {!isCompassModeOpen && !isPostMode && (
                     <FloatingSearchBar
                         onOpenMenu={() => setIsMenuOpen(true)}
@@ -595,11 +596,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         onSelectResult={handleSelectResult}
                         onCloseResults={() => setShowResults(false)}
                         onFocusSearch={handleSearchFocus}
-                        resultsPlacement={isMobileViewport ? 'above' : 'below'}
-                        style={isMobileViewport ? { bottom: SPLIT_CONTROL_BOTTOM } : { width: DESKTOP_SEARCH_WIDTH }}
-                        className={isMobileViewport
-                            ? 'absolute left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] z-[4600] animate-ui-rise'
-                            : 'absolute left-[max(1rem,env(safe-area-inset-left))] top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[4600] animate-ui-drop'}
+                        resultsPlacement={isMobileViewport ? 'below-screen' : 'below'}
+                        style={isMobileViewport ? { left: SEARCH_BAR_LEFT, right: MOBILE_SEARCH_BAR_RIGHT } : { left: SEARCH_BAR_LEFT, width: DESKTOP_SEARCH_WIDTH }}
+                        className="absolute top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[4600] animate-ui-drop"
                     />
                 )}
 
@@ -670,7 +669,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         ? { bottom: SPLIT_CONTROL_BOTTOM }
                         : !isMobileViewport ? undefined
                         : isPostMode ? { bottom: MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] }
-                        : { bottom: MOBILE_SEARCH_CONTROL_BOTTOM }}
+                        : { bottom: SPLIT_CONTROL_BOTTOM }}
                     // 横向きのノッチ側に隠れないよう、右端は安全領域の内側に置く
                     className="absolute right-[max(1rem,env(safe-area-inset-right))] z-[4500] md:bottom-8 md:right-[max(2rem,env(safe-area-inset-right))]"
                 />
