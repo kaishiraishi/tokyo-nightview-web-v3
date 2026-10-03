@@ -264,8 +264,13 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         return () => window.clearTimeout(timer);
     }, [locateError]);
 
+    // 位置情報のエラーは、同じ理由なら一度だけ出す（投稿モードに入るたびに自動で取得を始めるので、
+    // 許可していない端末で毎回赤い表示が出ないように）。現在地ボタンを押したときは、もう一度出す
+    const shownLocationErrorRef = useRef<string | null>(null);
     useEffect(() => {
-        if (userLocationError) setLocateError(userLocationError);
+        if (!userLocationError || userLocationError === shownLocationErrorRef.current) return;
+        shownLocationErrorRef.current = userLocationError;
+        setLocateError(userLocationError);
     }, [userLocationError]);
 
     const handleSearch = useCallback(async (query: string) => {
@@ -391,6 +396,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const handleLocate = useCallback(() => {
         if (!map) return;
         setLocateError(null);
+        shownLocationErrorRef.current = null;
         if (userPosition) {
             locateRequestRef.current = false;
             map.flyTo({
