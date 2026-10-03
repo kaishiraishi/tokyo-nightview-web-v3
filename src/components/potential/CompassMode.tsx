@@ -83,8 +83,9 @@ function outerDirectionStrengths(data: PotentialViewModel) {
         .reduce((max, sample) => Math.max(max, sample.visualStrength), 0));
 }
 
-// ベゼルの座標（SVG 単位、半径 100 = 文字盤幅の 0.62 倍）: Polar の円 ≈ 69、方位文字 77、目盛りは 84 から外へ伸びる
-const LABEL_RADIUS = 77;
+// ベゼルの座標（SVG 単位、半径 100 = 文字盤幅の 0.62 倍）: Polar の円 ≈ 69、方位文字 75、目盛りは 84 から外へ伸びる。
+// 方位文字（高さ約 9.5）と目盛りの間に少し余白を空ける
+const LABEL_RADIUS = 75;
 const TICK_INNER_RADIUS = 84;
 const TICK_MAX_GROWTH = 9;
 const MIN_STRENGTH_SPREAD = 0.03;
@@ -136,7 +137,7 @@ function CompassBezel({ rotation, profile }: { rotation: number; profile: number
                         transform={`rotate(${rotation} ${x} ${y})`}
                         textAnchor="middle"
                         dominantBaseline="central"
-                        fontSize="10"
+                        fontSize="9.5"
                         fontWeight={700}
                         fill={label === 'N' ? 'rgb(248,113,113)' : 'rgba(255,255,255,0.92)'}
                         stroke="rgba(5,7,11,0.85)"
