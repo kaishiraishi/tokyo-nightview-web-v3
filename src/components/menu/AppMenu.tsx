@@ -6,6 +6,7 @@ import {
   Settings,
   BookOpen,
   ChevronLeft,
+  User,
 } from '../ui/icons';
 import { type ReactNode, useState } from 'react';
 import type { FanConfig } from '../map/types';
@@ -13,16 +14,20 @@ import { PanelViewSelector, type PanelView } from '../potential/PanelViewSelecto
 import type { FavoritePlace } from '../../lib/favorites';
 import { FavoritesView } from './FavoritesView';
 import { GuideView } from './GuideView';
+import { AccountView } from './AccountView';
+import { DataAndAboutSettings } from './DataAndAboutSettings';
+import { readDemoAccount } from '../../lib/demoAccount';
 import { closeButton, glassSurface, textMuted, textPrimary } from '../../styles/ui';
 import buildings3dExample from '../../assets/settings/buildings-3d.webp';
 
-type MenuView = 'main' | 'settings' | 'favorites' | 'guide';
+type MenuView = 'main' | 'settings' | 'favorites' | 'guide' | 'account';
 
 const VIEW_TITLES: Record<MenuView, string> = {
   main: 'メニュー',
   settings: '設定',
   favorites: 'お気に入り',
   guide: 'はじめてガイド',
+  account: 'アカウント',
 };
 
 type AppMenuProps = {
@@ -139,6 +144,16 @@ export function AppMenu({
               // アカウントがないので、プロフィールや架空の数字は出さない。数字は実際の件数だけ
               <div className="space-y-6 animate-ui-view">
                 <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.03] shadow-inner">
+                  {/* アカウント（デモ）。開くたびに読み直す（アカウントのページで変えた表示名を反映する） */}
+                  <MenuRow
+                    icon={<User size={20} className={textMuted} />}
+                    label={readDemoAccount()?.displayName ?? 'ログイン（デモ）'}
+                    onClick={() => setActiveView('account')}
+                    isLast
+                  />
+                </div>
+
+                <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.03] shadow-inner">
                   {hasFavorites && (
                     <MenuRow
                       icon={<Heart size={20} className={textMuted} />}
@@ -179,6 +194,12 @@ export function AppMenu({
                 isLocating={isLocatingFavorite}
                 locateError={favoriteLocateError}
               />
+              </div>
+            )}
+
+            {activeView === 'account' && (
+              <div className="animate-ui-view">
+                <AccountView />
               </div>
             )}
 
@@ -287,6 +308,8 @@ export function AppMenu({
                     </div>
                   </section>
                 )}
+
+                {favorites !== undefined && <DataAndAboutSettings favorites={favorites} />}
 
                 {!hasPanelViewSetting && !hasFanConfigSetting && !hasDebugModeSetting && !hasBuildingsSetting && !hasHeadingSensorSetting && (
                   <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5">
