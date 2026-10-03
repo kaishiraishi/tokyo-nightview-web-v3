@@ -14,7 +14,7 @@ const SEARCH_PIN_COLOR = '#f5f5f5';
 function renderFavoriteButton(button: HTMLButtonElement, isFavorite: boolean) {
     const glyph = document.createElement('span');
     glyph.setAttribute('aria-hidden', 'true');
-    glyph.textContent = isFavorite ? '♥ ' : '♡ ';
+    glyph.textContent = isFavorite ? '♥' : '♡';
     button.replaceChildren(glyph, isFavorite ? 'お気に入りから外す' : 'お気に入りに追加');
     button.dataset.favorite = String(isFavorite);
 }

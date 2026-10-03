@@ -33,6 +33,7 @@ import { usePotentialAnalysis } from '../../hooks/usePotentialAnalysis';
 import { useMapLibre, POTENTIAL_LAYER_ID, PLATEAU_LAYER_ID, setPotentialDisplayScope } from '../../hooks/useMapLibre';
 import { usePostPopups } from '../../hooks/usePostPopups';
 import { usePosts } from '../../hooks/usePosts';
+import type { Post } from '../../lib/postsApi';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { useDeviceHeading } from '../../hooks/useDeviceHeading';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -112,7 +113,6 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const locateRequestRef = useRef(false);
     const isPostMode = mode === 'analyze';
     const { posts, reload: reloadPosts } = usePosts(isPostMode);
-    usePostPopups(map, isLoaded, posts, isPostMode);
     const { viewModel, isLoading: isSampling, error: samplingError } = usePotentialAnalysis({
         center: selectedLocation,
         range: maxDistance,
@@ -283,6 +283,19 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         else addFavorite(place);
     }, [addFavorite, favorites, removeFavorite]);
     useSearchResultMarker(map, searchPlace, isSearchPlaceFavorite, handleToggleSearchFavorite);
+
+    // 投稿のカードのハートからも、投稿の場所をお気に入りに追加 / 解除できる（名前は場所名、なければキャプション）
+    const favoriteIds = useMemo(() => new Set(favorites.map((item) => item.id)), [favorites]);
+    const handleTogglePostFavorite = useCallback((post: Post) => {
+        const id = favoriteId(post.location.lng, post.location.lat);
+        if (favoriteIds.has(id)) {
+            removeFavorite(id);
+            return;
+        }
+        const name = post.location.placeName || post.caption || '投稿の場所';
+        addFavorite({ name, lng: post.location.lng, lat: post.location.lat });
+    }, [addFavorite, favoriteIds, removeFavorite]);
+    usePostPopups(map, isLoaded, posts, isPostMode, favoriteIds, handleTogglePostFavorite);
 
     // お気に入りの一覧から選んだら、その地点へ動かして検索結果と同じピン（お気に入りの解除もできる）を立てる
     const handleSelectFavorite = useCallback((favorite: FavoritePlace) => {
