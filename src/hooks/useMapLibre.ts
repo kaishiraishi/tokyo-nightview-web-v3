@@ -343,6 +343,9 @@ export function useMapLibre(containerRef: RefObject<HTMLDivElement>) {
             maxPitch: 85,
             // DPR 3 の端末で 3 倍解像度のまま描くと GPU・メモリの負荷が大きいので 2 に抑える
             pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+            // 出典は必要なものだけ。既定で入る「MapLibre」のリンク（必須ではない）は出さない。
+            // PLATEAU は建物のタイルが見えるズーム（13 以上）でしか出ないので、常に出す（ソースの表記と同じ文字列なので重複しない）
+            attributionControl: { compact: true, customAttribution: '国土交通省 Project PLATEAU' },
         });
 
         map.scrollZoom?.enable?.();

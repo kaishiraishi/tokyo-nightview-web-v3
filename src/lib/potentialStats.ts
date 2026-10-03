@@ -17,3 +17,9 @@ export function upperPercent(value: number): number | null {
     }
     return (1 - low / STEPS) * 100;
 }
+
+// 「上位 X%」の境目の値（upper = 10 なら、光っている画素の上位 10% が始まる値）
+export function valueAtUpperPercent(upper: number): number {
+    const index = Math.round((1 - upper / 100) * STEPS);
+    return POTENTIAL_QUANTILES[Math.max(0, Math.min(STEPS, index))];
+}

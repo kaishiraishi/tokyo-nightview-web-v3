@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { MAX_POTENTIAL_VALUE, POTENTIAL_DISPLAY_THRESHOLD, POTENTIAL_THRESHOLD } from '../../lib/potentialSampler';
+import { valueAtUpperPercent } from '../../lib/potentialStats';
 import { BookOpen, ChevronRight, Layers, X } from '../ui/icons';
 import { closeButton, glassSurface } from '../../styles/ui';
 import type { PotentialDisplayScope } from '../../lib/storedSettings';
@@ -26,13 +28,71 @@ const SCOPES: Array<{ id: PotentialDisplayScope; label: string }> = [
     { id: 'all', label: '高・中・低' },
 ];
 
+// スコアの内訳。高 = 色の付く場所（閾値以上）の上位 10%（「高のみ」のタイルの閾値）、中 = 上位 10〜50%、低 = 残り。
+// 境目の値は z14 の順位表（potentialQuantiles）から求めるので、タイルを作り直しても数字がずれない
+const MEDIUM_UPPER_PERCENT = 50;
+const SCORE_BANDS = [
+    { label: '高', share: '上位 10%', from: POTENTIAL_DISPLAY_THRESHOLD, to: MAX_POTENTIAL_VALUE },
+    { label: '中', share: '上位 10〜50%', from: valueAtUpperPercent(MEDIUM_UPPER_PERCENT), to: POTENTIAL_DISPLAY_THRESHOLD },
+    { label: '低', share: '残り 50%', from: POTENTIAL_THRESHOLD, to: valueAtUpperPercent(MEDIUM_UPPER_PERCENT) },
+];
+
+function formatValue(value: number) {
+    return value.toFixed(3);
+}
+
+function ScoreBreakdown({ id }: { id: string }) {
+    return (
+        <div id={id} className="mt-3 rounded-xl border border-white/10 bg-black/25 p-3 animate-ui-drop">
+            <table className="w-full text-[11px] tabular-nums">
+                <thead>
+                    <tr className="text-white/40">
+                        <th scope="col" className="pb-1 text-left font-normal">スコア</th>
+                        <th scope="col" className="pb-1 text-left font-normal">色の付く場所の中で</th>
+                        <th scope="col" className="pb-1 text-right font-normal">値</th>
+                    </tr>
+                </thead>
+                <tbody className="text-white/80">
+                    {SCORE_BANDS.map((band) => (
+                        <tr key={band.label} className="border-t border-white/5">
+                            <th scope="row" className="py-1.5 text-left font-semibold text-white/90">{band.label}</th>
+                            <td className="py-1.5">{band.share}</td>
+                            <td className="py-1.5 text-right">
+                                {formatValue(band.from)}{band.to === MAX_POTENTIAL_VALUE ? ' 以上' : ` 〜 ${formatValue(band.to)}`}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            <p className="mt-2 text-[10px] leading-relaxed text-white/40">
+                値は夜景ポテンシャル（{formatValue(POTENTIAL_THRESHOLD)} 未満の場所には色を付けていません）。{formatValue(MAX_POTENTIAL_VALUE)} 以上は同じ色になり、それより高い場所どうしは比べられません。
+            </p>
+        </div>
+    );
+}
+
 // 地図に出す範囲だけを切り替える。コンパスの分析はどちらでも同じデータを使う
 function ScopeSelector({ scope, onChange }: { scope: PotentialDisplayScope; onChange: (scope: PotentialDisplayScope) => void }) {
+    const [showBreakdown, setShowBreakdown] = useState(false);
+    const breakdownId = useId();
     return (
         // 数字（上位 10%）は伝わりにくいので、スコアの高・中・低で表す。「高」は色の付く場所のうち上位 1 割
         <div>
         <div className="flex items-center justify-between gap-3">
-            <span id="map-modes-potential-scope" className="text-xs text-white/65">表示するスコア</span>
+            <span className="flex items-center gap-1">
+                <span id="map-modes-potential-scope" className="text-xs text-white/65">表示するスコア</span>
+                {/* 押せる範囲は 44px、見えるのは 20px の丸 */}
+                <button
+                    type="button"
+                    onClick={() => setShowBreakdown((open) => !open)}
+                    aria-expanded={showBreakdown}
+                    aria-controls={breakdownId}
+                    aria-label="スコアの内訳を見る"
+                    className="-m-3 grid h-11 w-11 place-items-center rounded-full"
+                >
+                    <span className={`grid h-5 w-5 place-items-center rounded-full border text-[11px] font-semibold transition-colors ${showBreakdown ? 'border-violet-300/70 bg-violet-700/70 text-white' : 'border-white/25 text-white/60 hover:text-white'}`} aria-hidden="true">?</span>
+                </button>
+            </span>
             <div role="group" aria-labelledby="map-modes-potential-scope" className="flex rounded-full border border-white/10 bg-black/30 p-0.5">
                 {SCOPES.map((option) => {
                     const selected = option.id === scope;
@@ -53,6 +113,7 @@ function ScopeSelector({ scope, onChange }: { scope: PotentialDisplayScope; onCh
         <p className="mt-2 text-[11px] leading-relaxed text-white/45">
             {scope === 'top10' ? '夜景を特に楽しめそうな場所だけに色を付けます。' : 'スコアが低い場所から高い場所まで、すべてに色を付けます。'}
         </p>
+        {showBreakdown && <ScoreBreakdown id={breakdownId} />}
         </div>
     );
 }
