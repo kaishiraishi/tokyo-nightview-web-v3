@@ -57,6 +57,8 @@ const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 24px)';
 const SPLIT_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom))';
 // 探索モードのスマホは、画面下に浮かぶ検索バー（高さ --btn-h + 10px）の上 12px にボタン列を置く
 const MOBILE_SEARCH_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom) + var(--btn-h) + 22px)';
+// 検索結果を選んだときのズーム
+const SEARCH_RESULT_ZOOM = 15;
 // PC の探索モードの検索バーの幅。ミニコンパスはその右に置く（16px + 幅 + 12px）
 const DESKTOP_SEARCH_WIDTH = 360;
 
@@ -269,7 +271,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     }, []);
 
     const handleSelectResult = useCallback((result: GeocodingResult) => {
-        map?.flyTo({ center: [result.lng, result.lat], zoom: 13, duration: 1200 });
+        // 街区が見分けられる程度まで寄る（z13 では市区町村全体が入り、どこに着いたか分かりにくかった）
+        map?.flyTo({ center: [result.lng, result.lat], zoom: SEARCH_RESULT_ZOOM, duration: 1200 });
         setSearchQuery(result.displayName.split(',')[0]);
         setShowResults(false);
         // 投稿モードのシートは検索結果を見せるために広げている。選んだら、飛んだ先の地図が見えるよう閉じる
