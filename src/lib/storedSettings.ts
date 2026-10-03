@@ -51,3 +51,9 @@ export function writeStoredPotentialScope(scope: PotentialDisplayScope): Potenti
     }
     return scope;
 }
+
+// 向きセンサー（コンパスを端末の向きで回す）。既定は ON。iOS は許可にタップが要るので、
+// 実際の開始は最初のタップのとき（PotentialMapView）。設定でオフにした値は以降そのまま使う
+const HEADING_SENSOR_STORAGE_KEY = 'nightview.headingSensor';
+export const readStoredHeadingSensor = () => readStoredFlag(HEADING_SENSOR_STORAGE_KEY, true);
+export const writeStoredHeadingSensor = (enabled: boolean) => writeStoredFlag(HEADING_SENSOR_STORAGE_KEY, enabled);

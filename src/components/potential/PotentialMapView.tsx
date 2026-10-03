@@ -19,9 +19,11 @@ import { readStoredPanelView, type PanelView, writeStoredPanelView } from './Pan
 import {
     readStoredBuildingsEnabled,
     readStoredDebugMode,
+    readStoredHeadingSensor,
     readStoredPotentialScope,
     writeStoredBuildingsEnabled,
     writeStoredDebugMode,
+    writeStoredHeadingSensor,
     writeStoredPotentialScope,
     type PotentialDisplayScope,
 } from '../../lib/storedSettings';
@@ -346,10 +348,24 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     }, [isLandscapePhone]);
 
     const headingSensorOn = deviceHeading.status === 'requesting' || deviceHeading.status === 'active';
+    const [headingSensorWanted, setHeadingSensorWanted] = useState(() => readStoredHeadingSensor());
     const handleHeadingSensorChange = useCallback((enabled: boolean) => {
+        setHeadingSensorWanted(writeStoredHeadingSensor(enabled));
         if (enabled) startDeviceHeading();
         else stopDeviceHeading();
     }, [startDeviceHeading, stopDeviceHeading]);
+
+    // 向きセンサーは既定で ON。タッチ端末（スマホ・タブレット）だけ自動で開始する（PC は方位センサーがない）。
+    // iOS は許可の確認にユーザー操作が要るので、最初のタップで開始する。許可しない・失敗したときは
+    // status が off 以外になるので、繰り返し求めない
+    const deviceHeadingStatus = deviceHeading.status;
+    useEffect(() => {
+        if (!headingSensorWanted || deviceHeadingStatus !== 'off') return;
+        if (!window.matchMedia('(pointer: coarse)').matches) return;
+        const handleFirstPointer = () => startDeviceHeading();
+        window.addEventListener('pointerdown', handleFirstPointer, { once: true, capture: true });
+        return () => window.removeEventListener('pointerdown', handleFirstPointer, { capture: true });
+    }, [deviceHeadingStatus, headingSensorWanted, startDeviceHeading]);
 
     // シートがあるのは投稿モードだけ。探索モードの検索バーは結果を自分の上下に出すので、シートは触らない
     const handleSearchFocus = useCallback(() => {
