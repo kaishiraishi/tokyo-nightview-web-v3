@@ -98,7 +98,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const [panelView, setPanelView] = useState<PanelView>(() => readStoredPanelView());
     const [debugMode, setDebugMode] = useState(() => readStoredDebugMode());
     const [buildingsEnabled, setBuildingsEnabled] = useState(() => readStoredBuildingsEnabled());
-    const [maxDistance, setMaxDistance] = useState<PotentialRange>(200);
+    const [maxDistance, setMaxDistance] = useState<PotentialRange>(1000);
     // コンパスの文字盤でタップした位置（地図にも同じ地点を出す）
     const [compassTarget, setCompassTarget] = useState<PolarPick | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
