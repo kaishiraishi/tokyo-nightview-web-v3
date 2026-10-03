@@ -39,6 +39,13 @@ v3 主画面（夜景ポテンシャル地図）を **GitHub Pages に公開済�
 - 運用: Claude Code 単独運用（Luna 廃止、2026-10-01）。ドキュメントは `PROJECT.md` / `STATE.md` / `AGENTS.md` / `CLAUDE.md` / `PLAN.md`。Figma 再現用の仕様書: `docs/directional-field-figma.md`、`docs/figma-screen-spec.md`
 - 旧機能: `MapViewExplore` などの旧 Explore/Analyze 系コードと `tools/dsm-api` は残してあり、現段階では判断しない（`PROJECT.md` の Non-goals）。lucide-react は Material Symbols（`src/components/ui/icons.tsx`）に置換済み
 
+- 地図のポテンシャル表示を上位 10% だけに（2026-10-03）: z14 で光っている画素の 90 パーセンタイル（`potentialQuantiles` の 900/1000 = 0.0479）を閾値に焼き込んだ表示用タイル `public/NightViewPotential_top10_tiles`（4,969 枚、0.48MB）を追加し、地図のソースだけ切り替えた。コンパスは従来の 0.006 のタイルのまま（ユーザー判断）。z14 の表示画素は 6,644,489 → 731,645（11.0%。値の同値が分位点付近に多いため 10% ちょうどではない）。`make-potential-tiles.sh` と CI の確認も 2 系統に。verify PASS、agent-browser（1280×800）で表示を確認。未コミット
+- 表示する範囲の切り替え（2026-10-03）: 表示モード画面に「表示する範囲: 上位 10% / すべて」を追加（`localStorage` の `nightview.potentialScope`、既定は上位 10%）。地図のソースのタイル URL を `setTiles` で切り替える。コンパスには影響しない。未コミット
+- コンパスでタップした地点を地図に表示（2026-10-03）: 文字盤をタップすると、文字盤に紫の点、地図に中心からの点線と紫の点を出し、ヘッダーに方位・距離・強度・値を表示（`useCompassTarget`、`PolarHeatmapView` の `onPick`）。距離はセルに丸めず、タップした位置そのもの。agent-browser（1280×800）で、文字盤の南東 156°・138m と地図の点の位置が合うことを確認。スマホ実機では未確認
+- 航空写真モードでポテンシャルを重ねる（2026-10-03）: 航空写真を選ぶとポテンシャル層もオンにし、航空写真のレイヤーをポテンシャル層の下に入れる。agent-browser で確認
+- 右上の探索 / 投稿の切替ピルを、左上のミニコンパスと縦の中心をそろえた（どちらも 48px。390×844 と 1920×1200 で確認）
+- 投稿モードのカメラボタンを、右下の現在地ボタンと中心をそろえた（MapControlStack の枠 1px + 余白 4px のずれ。PC・390px 幅とも中心が一致することを確認）
+
 ## In progress
 
 - 実機での確認（下の Next 1）。公開サイトは iPhone 14 設定のブラウザと、横画面 844×390 で確認済みだが、実機のセンサー・ノッチは未確認
@@ -97,4 +104,4 @@ v3 主画面（夜景ポテンシャル地図）を **GitHub Pages に公開済�
 
 ## Last updated
 
-2026-10-02
+2026-10-03

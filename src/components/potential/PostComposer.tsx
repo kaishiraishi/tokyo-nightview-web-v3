@@ -119,7 +119,8 @@ export function PostComposer({ map, currentLocation, onRequestLocation, onPosted
 
     return (
         <>
-            <div className="absolute right-6 z-[4500] flex flex-col items-end md:bottom-24 md:right-8" style={style}>
+            {/* 右下の MapControlStack（枠 1px + 内側の余白 4px）の現在地ボタンと中心を揃える。右端の値は MapControlStack と同じ */}
+            <div className="absolute right-[calc(max(1rem,env(safe-area-inset-right))+5px)] z-[4500] flex flex-col items-end md:bottom-24 md:right-[calc(max(2rem,env(safe-area-inset-right))+5px)]" style={style}>
                 <button
                     ref={buttonRef}
                     type="button"

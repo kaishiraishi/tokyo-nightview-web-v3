@@ -20,6 +20,10 @@ export const MAX_POTENTIAL_VALUE = 0.1635;
 // 地図に出すポテンシャルの閾値（「絞って探す」）。タイル生成時に焼き込み済み（scripts/bake-potential-tiles.py の
 // --threshold と一致させる）。クライアントでは方向・距離の ViewModel にも同じ値を渡す
 export const POTENTIAL_THRESHOLD = 0.006;
+// 地図の表示だけに使う閾値: z14 で光っている画素（POTENTIAL_THRESHOLD 以上）の上位 10%（potentialQuantiles の
+// 900/1000 位置）。public/NightViewPotential_top10_tiles に焼き込み済み。コンパスのサンプリングは
+// POTENTIAL_THRESHOLD のタイルを読むので、弱い光も方向の強さに入る
+export const POTENTIAL_DISPLAY_THRESHOLD = 0.0479;
 const TILE_CACHE = new Map<string, Promise<TileData | null>>();
 
 // Keep this in sync with scripts/make-potential-tiles.sh.

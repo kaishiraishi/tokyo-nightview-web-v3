@@ -4,6 +4,9 @@ import { annularSector, CANVAS_SIZE, CENTER, compassName, drawCenterMarker, form
 import { drawCompassLabels, rotateCompassCanvas } from '../compassCanvas';
 import type { PolarCell, PotentialViewModel } from './types';
 
+// 文字盤をタップした位置。bearing は地理方位、distance は range に対する実距離（セルに丸めない）
+export type PolarPick = { bearing: number; distance: number; cell: PolarCell | null };
+
 const INNER_RADIUS = POLAR_INNER_RADIUS;
 const OUTER_RADIUS = POLAR_OUTER_RADIUS;
 
@@ -14,6 +17,7 @@ export function PolarHeatmapView({
     showDistanceLabels = true,
     showTooltip = true,
     onHoverChange,
+    onPick,
 }: {
     data: PotentialViewModel;
     rotation?: number;
@@ -22,6 +26,8 @@ export function PolarHeatmapView({
     // false にすると吹き出しを出さない（呼び出し側が onHoverChange で受けて、別の場所に表示する）
     showTooltip?: boolean;
     onHoverChange?: (cell: PolarCell | null) => void;
+    // タップ（クリック）した位置。円の外なら null
+    onPick?: (pick: PolarPick | null) => void;
 }) {
     const [hovered, setHoveredState] = useState<PolarCell | null>(null);
     const setHovered = (cell: PolarCell | null) => {
@@ -83,20 +89,32 @@ export function PolarHeatmapView({
         context.restore();
     }, [cells, data.range, rotation, showCompassLabels, showDistanceLabels]);
 
-    const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
+    // 画面上の位置 → 地理方位と、中心から外周までの割合（0〜1）。円の外は null
+    const pointerToPolar = (event: PointerEvent<HTMLCanvasElement>) => {
         const rect = event.currentTarget.getBoundingClientRect();
         const x = ((event.clientX - rect.left) / rect.width) * CANVAS_SIZE - CENTER;
         const y = ((event.clientY - rect.top) / rect.height) * CANVAS_SIZE - CENTER;
         const radius = Math.hypot(x, y);
-        if (radius < INNER_RADIUS || radius > OUTER_RADIUS) {
-            setHovered(null);
-            return;
-        }
+        if (radius < INNER_RADIUS || radius > OUTER_RADIUS) return null;
         const screenBearing = (((Math.atan2(y, x) * 180) / Math.PI + 90) % 360 + 360) % 360;
-        const bearing = (screenBearing + rotation) % 360;
+        return { bearing: (screenBearing + rotation) % 360, fraction: (radius - INNER_RADIUS) / (OUTER_RADIUS - INNER_RADIUS) };
+    };
+
+    const cellAt = (bearing: number, fraction: number) => {
         const bearingIndex = Math.round(bearing / (360 / bearingCount)) % bearingCount;
-        const distanceIndex = Math.min(distanceCount - 1, Math.floor(((radius - INNER_RADIUS) / (OUTER_RADIUS - INNER_RADIUS)) * distanceCount));
-        setHovered(cells[bearingIndex * distanceCount + distanceIndex] ?? null);
+        const distanceIndex = Math.min(distanceCount - 1, Math.floor(fraction * distanceCount));
+        return cells[bearingIndex * distanceCount + distanceIndex] ?? null;
+    };
+
+    const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
+        const polar = pointerToPolar(event);
+        setHovered(polar ? cellAt(polar.bearing, polar.fraction) : null);
+    };
+
+    const handlePointerUp = (event: PointerEvent<HTMLCanvasElement>) => {
+        if (!onPick) return;
+        const polar = pointerToPolar(event);
+        onPick(polar ? { bearing: polar.bearing, distance: polar.fraction * data.range, cell: cellAt(polar.bearing, polar.fraction) } : null);
     };
 
     return (
@@ -106,6 +124,7 @@ export function PolarHeatmapView({
                 className="block h-auto w-full touch-pan-y"
                 style={{ aspectRatio: '1 / 1' }}
                 onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
                 onPointerLeave={() => setHovered(null)}
                 aria-label="Polar Heatmap: 方向×距離×強度"
             />

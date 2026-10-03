@@ -29,3 +29,25 @@ export const writeStoredDebugMode = (enabled: boolean) => writeStoredFlag(DEBUG_
 const MOBILE_MAX_WIDTH = 768;
 export const readStoredBuildingsEnabled = () => readStoredFlag(BUILDINGS_STORAGE_KEY, window.innerWidth >= MOBILE_MAX_WIDTH);
 export const writeStoredBuildingsEnabled = (enabled: boolean) => writeStoredFlag(BUILDINGS_STORAGE_KEY, enabled);
+
+// 地図に出すポテンシャルの範囲。'top10' は光っている画素の上位 10%（POTENTIAL_DISPLAY_THRESHOLD）、
+// 'all' は閾値 0.006 以上のすべて。それぞれ別のタイルに焼き込み済み。コンパスの分析には影響しない
+export type PotentialDisplayScope = 'top10' | 'all';
+const POTENTIAL_SCOPE_STORAGE_KEY = 'nightview.potentialScope';
+
+export function readStoredPotentialScope(): PotentialDisplayScope {
+    try {
+        return window.localStorage.getItem(POTENTIAL_SCOPE_STORAGE_KEY) === 'all' ? 'all' : 'top10';
+    } catch {
+        return 'top10';
+    }
+}
+
+export function writeStoredPotentialScope(scope: PotentialDisplayScope): PotentialDisplayScope {
+    try {
+        window.localStorage.setItem(POTENTIAL_SCOPE_STORAGE_KEY, scope);
+    } catch (error) {
+        console.warn(`Failed to persist ${POTENTIAL_SCOPE_STORAGE_KEY}`, error);
+    }
+    return scope;
+}

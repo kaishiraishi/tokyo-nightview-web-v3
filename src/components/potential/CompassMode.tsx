@@ -6,7 +6,7 @@ import { CANVAS_SIZE, compassName, formatDistance, POLAR_INNER_RADIUS, POLAR_OUT
 import { SAMPLE_BEARINGS } from '../../lib/potentialSampler';
 import { potentialColorCss } from './prototypes/colorScale';
 import { smoothProfile } from './prototypes/interpolation';
-import { PolarHeatmapView } from './prototypes/PolarHeatmap';
+import { PolarHeatmapView, type PolarPick } from './prototypes/PolarHeatmap';
 import { POTENTIAL_RANGES, type PolarCell, type PotentialRange, type PotentialViewModel } from './prototypes/types';
 
 export type CompassModeProps = {
@@ -22,6 +22,9 @@ export type CompassModeProps = {
     // 向きセンサーを開始する（スマホを横向きにして自動で開いたときは、タップによる開始がないため）
     onStartSensor: () => void;
     onClose: () => void;
+    // 文字盤をタップした位置。地図側にも同じ地点を出す（PotentialMapView の useCompassTarget）
+    target: PolarPick | null;
+    onTargetChange: (target: PolarPick | null) => void;
 };
 
 // 文字盤の大きさ: main（container）の短辺に対する比率と、文字盤の中の Polar の円の比率（inset 7%）。
@@ -31,6 +34,25 @@ const DISK_SCALE = 0.86;
 const DIAL_SIZE = `calc(min(100cqw, 100cqh) * ${DIAL_SCALE})`;
 // 縮尺バーの長さ = 文字盤上で中心から range までの長さ（Polar の INNER → OUTER）
 const SCALE_BAR_WIDTH = `calc(min(100cqw, 100cqh) * ${DIAL_SCALE * DISK_SCALE * ((POLAR_OUTER_RADIUS - POLAR_INNER_RADIUS) / CANVAS_SIZE)})`;
+
+// 読み取り値の 1 行。方位・距離はなぞった（タップした）位置、強度と値はその位置のセル
+function readoutText(bearing: number, distance: number, cell: PolarCell | null) {
+    const head = `${compassName(bearing)} ${Math.round(bearing)}° · ${formatDistance(Math.round(distance))}`;
+    return cell ? `${head} · 強度 ${Math.round(cell.visualStrength * 100)}% · 値 ${cell.rawValue.toFixed(3)}` : head;
+}
+
+// タップした位置の印。文字盤の円（Polar の canvas）の中心からの半径を、canvas に対する割合で置く
+function TargetMarker({ target, range, rotation }: { target: PolarPick; range: number; rotation: number }) {
+    const radius = POLAR_INNER_RADIUS + Math.min(1, target.distance / range) * (POLAR_OUTER_RADIUS - POLAR_INNER_RADIUS);
+    return (
+        <div className="pointer-events-none absolute inset-0" style={{ transform: `rotate(${target.bearing - rotation}deg)` }}>
+            <div
+                className="absolute left-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-violet-500 shadow-[0_0_10px_rgba(167,139,250,0.9)]"
+                style={{ top: `${(0.5 - radius / CANVAS_SIZE) * 100}%` }}
+            />
+        </div>
+    );
+}
 
 const TICKS = Array.from({ length: 72 }, (_, index) => index * 5);
 
@@ -173,6 +195,8 @@ export function CompassMode({
     isSupported,
     onStartSensor,
     onClose,
+    target,
+    onTargetChange,
 }: CompassModeProps) {
     // 文字盤をなぞった位置の値。吹き出しにせず、ヘッダーの状態表示の位置に出す
     const [hovered, setHovered] = useState<PolarCell | null>(null);
@@ -180,6 +204,9 @@ export function CompassMode({
     const strongest = strongestDirection(data);
     const hasUsefulDirection = strongest !== null && strongest.strength > 0.015;
     const profile = useMemo(() => (data ? smoothProfile(outerDirectionStrengths(data)) : null), [data]);
+    const readout = hovered
+        ? readoutText(hovered.bearing, hovered.distance, hovered)
+        : target ? readoutText(target.bearing, target.distance, target.cell) : null;
     const message = lowAccuracy && status === 'active'
         ? '精度が低い状態です。端末を8の字に振って補正してください'
         : error && !data && !isLoading ? error : statusMessage(status, isSupported, error);
@@ -192,7 +219,7 @@ export function CompassMode({
                     <h2 className="sr-only">コンパスモード</h2>
                     {/* 読み取り値は同じ位置に重ね、出し入れでヘッダーの高さ（文字盤の大きさ）が変わらないようにする */}
                     <div className="relative">
-                        <div className={hovered ? 'invisible' : ''}>
+                        <div className={readout ? 'invisible' : ''}>
                             {status === 'off' && isSupported ? (
                                 <button type="button" onClick={onStartSensor} className="mt-0.5 rounded-full border border-violet-300/40 bg-violet-700/70 px-3 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-violet-600">
                                     向きセンサーを開始
@@ -201,9 +228,9 @@ export function CompassMode({
                                 <p className={`truncate text-[11px] ${lowAccuracy && status === 'active' ? 'text-amber-200/85' : 'text-white/50'}`}>{message}</p>
                             )}
                         </div>
-                        {hovered && (
+                        {readout && (
                             <p className="pointer-events-none absolute inset-0 flex items-center truncate text-[11px] tabular-nums text-white/90" aria-live="polite">
-                                {compassName(hovered.bearing)} {Math.round(hovered.bearing)}° · {formatDistance(Math.round(hovered.distance))} · 強度 {Math.round(hovered.visualStrength * 100)}% · 値 {hovered.rawValue.toFixed(3)}
+                                {readout}
                             </p>
                         )}
                     </div>
@@ -220,12 +247,13 @@ export function CompassMode({
 
                     <div className="absolute inset-[7%] overflow-hidden rounded-full border border-white/10 bg-[#080b10]/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.55)]">
                         {data ? (
-                            <PolarHeatmapView data={data} rotation={dialRotation} showCompassLabels={false} showDistanceLabels={false} showTooltip={false} onHoverChange={setHovered} />
+                            <PolarHeatmapView data={data} rotation={dialRotation} showCompassLabels={false} showDistanceLabels={false} showTooltip={false} onHoverChange={setHovered} onPick={onTargetChange} />
                         ) : (
                             <div className="grid h-full place-items-center px-6 text-center text-[11px] leading-relaxed text-white/45">
                                 {isLoading ? '夜景ポテンシャルを読み込んでいます…' : '選択地点または現在地のデータがありません'}
                             </div>
                         )}
+                        {data && target && <TargetMarker target={target} range={data.range} rotation={dialRotation} />}
                     </div>
 
                     <ForwardCone />

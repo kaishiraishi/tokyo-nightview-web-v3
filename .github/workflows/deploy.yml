@@ -33,12 +33,14 @@ jobs:
           VITE_CARTO_STYLE_DARK: ${{ secrets.VITE_CARTO_STYLE_DARK }}
           VITE_CARTO_STYLE_LIGHT: ${{ secrets.VITE_CARTO_STYLE_LIGHT }}
       
-      # ポテンシャルのタイル（閾値処理済みの WebP）は git 管理。欠けたまま公開しない
+      # ポテンシャルのタイル（閾値処理済みの WebP。サンプリング用と表示用の 2 系統）は git 管理。欠けたまま公開しない
       - name: Verify tiles
         run: |
-          count=$(find dist/NightViewPotential_tiles -name '*.webp' | wc -l)
-          echo "potential tiles: $count"
-          test "$count" -ge 4900
+          for dir in NightViewPotential_tiles NightViewPotential_top10_tiles; do
+            count=$(find "dist/$dir" -name '*.webp' | wc -l)
+            echo "$dir: $count"
+            test "$count" -ge 4900
+          done
           test -f dist/manifest.webmanifest
 
       - uses: actions/configure-pages@v5

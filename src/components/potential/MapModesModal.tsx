@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BookOpen, ChevronRight, Layers, X } from '../ui/icons';
 import { closeButton, glassSurface } from '../../styles/ui';
+import type { PotentialDisplayScope } from '../../lib/storedSettings';
 import aerialThumbnail from '../../assets/map-modes/aerial.webp';
 import potentialThumbnail from '../../assets/map-modes/potential.webp';
 import standardThumbnail from '../../assets/map-modes/standard.webp';
@@ -16,7 +17,39 @@ export type MapModesModalProps = {
     setAerialEnabled: (enabled: boolean) => void;
     potentialOpacity: number;
     setPotentialOpacity: (opacity: number) => void;
+    potentialScope: PotentialDisplayScope;
+    setPotentialScope: (scope: PotentialDisplayScope) => void;
 };
+
+const SCOPES: Array<{ id: PotentialDisplayScope; label: string }> = [
+    { id: 'top10', label: '上位 10%' },
+    { id: 'all', label: 'すべて' },
+];
+
+// 地図に出す範囲だけを切り替える。コンパスの分析はどちらでも同じデータを使う
+function ScopeSelector({ scope, onChange }: { scope: PotentialDisplayScope; onChange: (scope: PotentialDisplayScope) => void }) {
+    return (
+        <div className="flex items-center justify-between gap-3">
+            <span id="map-modes-potential-scope" className="text-xs text-white/65">表示する範囲</span>
+            <div role="group" aria-labelledby="map-modes-potential-scope" className="flex rounded-full border border-white/10 bg-black/30 p-0.5">
+                {SCOPES.map((option) => {
+                    const selected = option.id === scope;
+                    return (
+                        <button
+                            key={option.id}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => onChange(option.id)}
+                            className={`min-h-9 rounded-full px-3.5 text-xs transition-colors ${selected ? 'bg-violet-500/85 font-semibold text-white' : 'text-white/60 hover:text-white/85'}`}
+                        >
+                            {option.label}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 // サムネイルはこのアプリの地図を各モードで撮影したもの（川崎市多摩区付近、z13）。地図の見た目を変えたら撮り直す
 const MODES: Array<{ id: MapModeId; label: string; thumbnail: string }> = [
@@ -25,7 +58,7 @@ const MODES: Array<{ id: MapModeId; label: string; thumbnail: string }> = [
     { id: 'aerial', label: '航空写真', thumbnail: aerialThumbnail },
 ];
 
-// モードは 1 つだけ選ぶ（Apple マップの Map Modes と同じ）。航空写真を選ぶとポテンシャルは消える
+// モードは 1 つだけ選ぶ（Apple マップの Map Modes と同じ）。航空写真モードは、写真の上にポテンシャルも重ねる
 function activeMode(potentialEnabled: boolean, aerialEnabled: boolean): MapModeId {
     if (aerialEnabled) return 'aerial';
     if (potentialEnabled) return 'potential';
@@ -48,7 +81,7 @@ function PotentialExplainer() {
                     <h3 className="mb-1 font-semibold text-white/85">見かた</h3>
                     <ul className="list-disc space-y-1 pl-4">
                         <li>黄色・オレンジに近いほど高く、暗い紫ほど低い値です。</li>
-                        <li>値が小さい場所は色を付けず、地図をそのまま見せています。</li>
+                        <li>値が小さい場所は色を付けず、地図をそのまま見せています。「上位 10%」では、色の付く場所のうち特に高い 1 割だけを表示します。</li>
                     </ul>
                 </div>
                 <div>
@@ -95,6 +128,8 @@ export function MapModesModal({
     setAerialEnabled,
     potentialOpacity,
     setPotentialOpacity,
+    potentialScope,
+    setPotentialScope,
 }: MapModesModalProps) {
     useEffect(() => {
         if (!isOpen) return;
@@ -109,7 +144,7 @@ export function MapModesModal({
 
     const selectedMode = activeMode(potentialEnabled, aerialEnabled);
     const selectMode = (mode: MapModeId) => {
-        setPotentialEnabled(mode === 'potential');
+        setPotentialEnabled(mode === 'potential' || mode === 'aerial');
         setAerialEnabled(mode === 'aerial');
     };
 
@@ -139,7 +174,8 @@ export function MapModesModal({
                 </div>
 
                 <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-3">
-                    <div className="flex items-center justify-between gap-3 text-xs text-white/65">
+                    <ScopeSelector scope={potentialScope} onChange={setPotentialScope} />
+                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-white/65">
                         <label htmlFor="map-modes-potential-opacity">ポテンシャルの不透明度</label>
                         <span className="tabular-nums text-white/45">{Math.round(potentialOpacity * 100)}%</span>
                     </div>

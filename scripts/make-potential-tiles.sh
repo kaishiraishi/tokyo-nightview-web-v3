@@ -10,6 +10,9 @@ IN_TIF="/Users/kaishiraishi/Desktop/PLATEAU_AWARD/plateau_tokyo_DSM_v2/temp/nigh
 WORK="./tiles-work/work"
 PNG_DIR="./tiles-work/potential-png"
 OUT_DIR="./public/NightViewPotential_tiles"
+# 地図の表示用（上位 10% だけ）。閾値は src/lib/potentialSampler.ts の POTENTIAL_DISPLAY_THRESHOLD と一致させる
+DISPLAY_OUT_DIR="./public/NightViewPotential_top10_tiles"
+DISPLAY_THRESHOLD="0.0479"
 mkdir -p "$WORK" "$PNG_DIR"
 
 # ---- PARAMS ----
@@ -84,5 +87,6 @@ GDAL2TILES="/Users/kaishiraishi/miniconda3/bin/gdal2tiles.py"
 # -----------------------------
 echo "[6/6] Baking threshold into WebP tiles..."
 "${PYTHON_BAKE:-python3}" "$(dirname "$0")/bake-potential-tiles.py" --src "$PNG_DIR" --dst "$OUT_DIR"
+"${PYTHON_BAKE:-python3}" "$(dirname "$0")/bake-potential-tiles.py" --src "$PNG_DIR" --dst "$DISPLAY_OUT_DIR" --threshold "$DISPLAY_THRESHOLD"
 
 echo "✅ DONE: Served tiles are in $OUT_DIR (commit them); raw PNG tiles are in $PNG_DIR"

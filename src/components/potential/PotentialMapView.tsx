@@ -14,11 +14,19 @@ import { UserLocationMarker } from './UserLocationMarker';
 import { PostListPanel } from '../hud/PostListPanel';
 import { PostComposer } from './PostComposer';
 import { readStoredPanelView, type PanelView, writeStoredPanelView } from './PanelViewSelector';
-import { readStoredBuildingsEnabled, readStoredDebugMode, writeStoredBuildingsEnabled, writeStoredDebugMode } from '../../lib/storedSettings';
+import {
+    readStoredBuildingsEnabled,
+    readStoredDebugMode,
+    readStoredPotentialScope,
+    writeStoredBuildingsEnabled,
+    writeStoredDebugMode,
+    writeStoredPotentialScope,
+    type PotentialDisplayScope,
+} from '../../lib/storedSettings';
 import { type PotentialRange } from './prototypes/types';
 import { POTENTIAL_THRESHOLD, type MapLocation } from '../../lib/potentialSampler';
 import { usePotentialAnalysis } from '../../hooks/usePotentialAnalysis';
-import { useMapLibre, POTENTIAL_LAYER_ID, PLATEAU_LAYER_ID } from '../../hooks/useMapLibre';
+import { useMapLibre, POTENTIAL_LAYER_ID, PLATEAU_LAYER_ID, setPotentialDisplayScope } from '../../hooks/useMapLibre';
 import { usePostPopups } from '../../hooks/usePostPopups';
 import { usePosts } from '../../hooks/usePosts';
 import { useUserLocation } from '../../hooks/useUserLocation';
@@ -26,6 +34,8 @@ import { useDeviceHeading } from '../../hooks/useDeviceHeading';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { usePixelInspector } from '../../hooks/usePixelInspector';
 import { useRangeRings } from '../../hooks/useRangeRings';
+import { useCompassTarget } from '../../hooks/useCompassTarget';
+import type { PolarPick } from './prototypes/PolarHeatmap';
 import { searchLocation, type GeocodingResult } from '../../lib/api/geocodingApi';
 import { normalizeAngle } from '../../lib/heading';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -77,11 +87,14 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const [potentialEnabled, setPotentialEnabled] = useState(true);
     const [aerialEnabled, setAerialEnabled] = useState(false);
     const [potentialOpacity, setPotentialOpacity] = useState(0.82);
+    const [potentialScope, setPotentialScope] = useState<PotentialDisplayScope>(() => readStoredPotentialScope());
     const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null);
     const [panelView, setPanelView] = useState<PanelView>(() => readStoredPanelView());
     const [debugMode, setDebugMode] = useState(() => readStoredDebugMode());
     const [buildingsEnabled, setBuildingsEnabled] = useState(() => readStoredBuildingsEnabled());
     const [maxDistance, setMaxDistance] = useState<PotentialRange>(200);
+    // コンパスの文字盤でタップした位置（地図にも同じ地点を出す）
+    const [compassTarget, setCompassTarget] = useState<PolarPick | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -130,6 +143,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
             ? { edge: 'left', fraction: COMPASS_CARD_LANDSCAPE_WIDTH }
             : { edge: 'top', fraction: COMPASS_CARD_PORTRAIT_HEIGHT },
     );
+    useCompassTarget(map, isLoaded, selectedLocation ?? currentLocation, isCompassModeOpen ? compassTarget : null);
     const rotation = deviceHeading.status === 'active' && deviceHeading.heading !== null ? deviceHeading.heading : normalizeAngle(mapBearing);
 
     useEffect(() => {
@@ -202,6 +216,15 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
 
     useEffect(() => {
         if (!map || !isLoaded) return;
+        setPotentialDisplayScope(map, potentialScope);
+    }, [map, isLoaded, potentialScope]);
+
+    const handlePotentialScopeChange = useCallback((scope: PotentialDisplayScope) => {
+        setPotentialScope(writeStoredPotentialScope(scope));
+    }, []);
+
+    useEffect(() => {
+        if (!map || !isLoaded) return;
         const aerialLayer = map.getLayer('aerial-photo-layer');
         if (aerialLayer) map.setLayoutProperty('aerial-photo-layer', 'visibility', aerialEnabled ? 'visible' : 'none');
     }, [map, isLoaded, aerialEnabled]);
@@ -265,7 +288,17 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     // コンパスモードを閉じてもセンサーは止めない（左上のミニコンパスが向きを出し続ける）。止めるのは設定のスイッチ
     const handleCompassModeClose = useCallback(() => {
         setIsCompassModeOpen(false);
+        setCompassTarget(null);
     }, []);
+
+    // Range や中心の地点を変えたら、タップした位置は別の場所を指すことになるので消す
+    const handleCompassRangeChange = useCallback((range: PotentialRange) => {
+        setMaxDistance(range);
+        setCompassTarget(null);
+    }, []);
+    useEffect(() => {
+        setCompassTarget(null);
+    }, [selectedLocation]);
 
     useEffect(() => {
         compassOpenRef.current = isCompassModeOpen;
@@ -280,6 +313,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         } else if (openedByLandscapeRef.current) {
             openedByLandscapeRef.current = false;
             setIsCompassModeOpen(false);
+            setCompassTarget(null);
         }
     }, [isLandscapePhone]);
 
@@ -353,7 +387,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         data={compassViewModel}
                         isLoading={compassIsSampling}
                         range={maxDistance}
-                        onRangeChange={setMaxDistance}
+                        onRangeChange={handleCompassRangeChange}
                         status={deviceHeading.status}
                         heading={deviceHeading.heading}
                         lowAccuracy={deviceHeading.lowAccuracy}
@@ -361,6 +395,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         isSupported={deviceHeading.isSupported}
                         onStartSensor={startDeviceHeading}
                         onClose={handleCompassModeClose}
+                        target={compassTarget}
+                        onTargetChange={setCompassTarget}
                     />
                     </div>
                 )}
@@ -389,10 +425,11 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                 )}
 
                 {!isCompassModeOpen && (
+                    // 左上のミニコンパス（64px）と縦の中心を揃える。ピルの高さは --btn-h + 余白 8px + 枠 2px
                     <MapModeToggle
                         mode={mode}
                         onModeChange={onModeChange}
-                        className="absolute right-4 top-[calc(16px+env(safe-area-inset-top))] z-[5000]"
+                        className="absolute right-4 top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[5000]"
                     />
                 )}
 
@@ -529,6 +566,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     setAerialEnabled={setAerialEnabled}
                     potentialOpacity={potentialOpacity}
                     setPotentialOpacity={setPotentialOpacity}
+                    potentialScope={potentialScope}
+                    setPotentialScope={handlePotentialScopeChange}
                 />
 
                 {!isLoaded && (

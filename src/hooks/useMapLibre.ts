@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, type RefObject } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useGsiTerrainSource as createGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
 import { DEFAULT_STYLE } from '../config/mapStyles';
+import { readStoredPotentialScope, type PotentialDisplayScope } from '../lib/storedSettings';
 
 // ============================================
 // PLATEAU MVT Configuration
@@ -34,12 +35,26 @@ const AERIAL_LAYER_ID = 'aerial-photo-layer';
 const AERIAL_TILE_URL = 'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg';
 
 // 閾値は生成時に焼き込み済みの WebP なので、通常のラスターソースとして読むだけでよい。
-// 閾値以下のタイルも透明な WebP として全て置いてある（404 だと MapLibre が親タイルで代用してしまうため）
+// 閾値以下のタイルも透明な WebP として全て置いてある（404 だと MapLibre が親タイルで代用してしまうため）。
+// 表示する範囲（設定の PotentialDisplayScope）ごとに焼き込んだタイルを切り替える。'top10' は上位 10%
+// （POTENTIAL_DISPLAY_THRESHOLD）だけの表示用タイル、'all' はサンプリングと同じタイル。
+function potentialTileUrl(scope: PotentialDisplayScope): string {
+    const dir = scope === 'all' ? 'NightViewPotential_tiles' : 'NightViewPotential_top10_tiles';
+    return `${import.meta.env.BASE_URL}${dir}/{z}/{x}/{y}.webp`;
+}
+
+export function setPotentialDisplayScope(map: maplibregl.Map, scope: PotentialDisplayScope) {
+    const source = map.getSource<maplibregl.RasterTileSource>(POTENTIAL_SOURCE_ID);
+    const url = potentialTileUrl(scope);
+    if (source && source.tiles[0] !== url) source.setTiles([url]);
+}
+
+// スタイルの再読み込みでソースを作り直すときも保存済みの範囲を使う（設定は保存してから反映するため）
 function addPotentialLayer(map: maplibregl.Map) {
     if (!map.getSource(POTENTIAL_SOURCE_ID)) {
         map.addSource(POTENTIAL_SOURCE_ID, {
             type: 'raster',
-            tiles: [`${import.meta.env.BASE_URL}NightViewPotential_tiles/{z}/{x}/{y}.webp`],
+            tiles: [potentialTileUrl(readStoredPotentialScope())],
             tileSize: POTENTIAL_TILE_SIZE,
             minzoom: 10,
             maxzoom: 14,
@@ -69,8 +84,11 @@ function addAerialPhoto(map: maplibregl.Map) {
     }
 
     if (!map.getLayer(AERIAL_LAYER_ID)) {
-        // ラベルなどの最下層にあるシンボルレイヤーを取得し、その手前に挿入する
-        const firstSymbolId = map.getStyle().layers?.find((l) => l.type === 'symbol')?.id;
+        // ポテンシャル層の下に置く（航空写真モードでは写真の上にポテンシャルを重ねるため）。
+        // ポテンシャル層がなければ、ラベルなどの最下層にあるシンボルレイヤーの手前に挿入する
+        const firstSymbolId = map.getLayer(POTENTIAL_LAYER_ID)
+            ? POTENTIAL_LAYER_ID
+            : map.getStyle().layers?.find((l) => l.type === 'symbol')?.id;
 
         map.addLayer(
             {
