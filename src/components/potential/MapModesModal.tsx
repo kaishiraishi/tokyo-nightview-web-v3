@@ -216,7 +216,7 @@ export function MapModesModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[9000] grid place-items-center bg-black/60 px-3 py-6 backdrop-blur-sm" role="presentation" onMouseDown={onClose}>
+        <div className="fixed inset-0 z-[9000] grid place-items-center bg-black/60 px-3 py-6 backdrop-blur-sm animate-ui-fade" role="presentation" onMouseDown={onClose}>
             <section
                 role="dialog"
                 aria-modal="true"

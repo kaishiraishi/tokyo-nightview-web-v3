@@ -290,7 +290,7 @@ Google **Material Symbols Outlined**（weight 400、fill 0、optical size 24）�
 ### 3-2 モード切替 `MapModeToggle`（右上）
 
 - 横のピル 98 × 54。glass/control、角丸 full、余白 4px。
-- 選択中の背景は 44px の円で左右に滑る: 探索 = 白、投稿 = violet-700。影 shadow-sm。
+- 選択中の背景は 44px の円で左右に滑る: 探索・投稿ともに violet-700。影 shadow-sm。
 - 探索ボタン（MapIcon）: 選択中は黒、未選択は白 70%。投稿ボタン（Sparkle）: 選択中は白、未選択でも **violet-300**。
 
 ### 3-3 検索バー `FloatingSearchBar`

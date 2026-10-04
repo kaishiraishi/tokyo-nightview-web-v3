@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
-import { LayerMenu } from '../layout/LayerMenu';
 import { FloatingSearchBar } from '../layout/FloatingSearchBar';
 import { createStreetViewPopup } from './streetViewPopup';
 import { createMapPin } from './mapPin';
-import { MOBILE_SHEET_CONTROL_BOTTOMS, nextMobileSheetLevel, type MobileSheetLevel } from '../layout/mobileSheet';
 import { AppMenu } from '../menu/AppMenu';
 import { CompassMode } from './CompassMode';
 import { MapControlStack } from './MapControlStack';
@@ -12,7 +10,6 @@ import { MapModesModal } from './MapModesModal';
 import { MapModeToggle } from './MapModeToggle';
 import { MiniCompass } from './MiniCompass';
 import { UserLocationMarker } from './UserLocationMarker';
-import { PostListPanel } from '../hud/PostListPanel';
 import { PostComposer } from './PostComposer';
 import { readStoredPanelView, type PanelView, writeStoredPanelView } from './PanelViewSelector';
 import {
@@ -55,7 +52,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // 枠 1px + 余白 4px + ボタン 2 つ + 間隔 4px × 2
 const CONTROL_STACK_HEIGHT = 'calc(var(--btn-h) * 2 + 13px)';
 
-// シートがないとき（コンパスモード中・探索モードのスマホ）は、地図下端の出典表示（2 行になることがある）の上に部品を置く
+// スマホでは、地図下端の出典表示（2 行になることがある）の上に部品を置く（探索・投稿・コンパスモード共通）
 const SPLIT_CONTROL_BOTTOM = 'calc(56px + env(safe-area-inset-bottom))';
 // 検索結果を選んだときのズーム
 const SEARCH_RESULT_ZOOM = 15;
@@ -65,8 +62,6 @@ const SEARCH_RESULT_ZOOM = 15;
 const SEARCH_BAR_LEFT = 'calc(88px + env(safe-area-inset-left))';
 const MOBILE_SEARCH_BAR_RIGHT = 'calc(16px + var(--btn-h) * 2 + 18px + env(safe-area-inset-right))';
 const DESKTOP_SEARCH_WIDTH = 360;
-// PC の投稿モードで左パネルが開いているときは、ミニコンパス（left 352px）の右に置く: 352 + 64 + 8
-const DESKTOP_POST_SEARCH_BAR_LEFT = 'calc(424px + env(safe-area-inset-left))';
 
 // コンパスモードのカードは地図の上に浮かべる。横長は左（地図の幅の割合）、縦長は上。
 // 縦長はデザインどおりほぼ正方形（745:755）にし、幅は画面いっぱい（最大 420px）。
@@ -100,7 +95,6 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const deviceHeading = useDeviceHeading();
     const { start: startDeviceHeading, stop: stopDeviceHeading } = deviceHeading;
     const [isMobileViewport, setIsMobileViewport] = useState(getIsMobileViewport);
-    const [isDesktopLayerMenuOpen, setIsDesktopLayerMenuOpen] = useState(() => !getIsMobileViewport());
     const [potentialEnabled, setPotentialEnabled] = useState(true);
     const [aerialEnabled, setAerialEnabled] = useState(false);
     const [potentialOpacity, setPotentialOpacity] = useState(0.82);
@@ -128,7 +122,6 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         range: maxDistance,
         threshold: POTENTIAL_THRESHOLD,
     });
-    const [mobileSheetLevel, setMobileSheetLevel] = useState<MobileSheetLevel>(() => getIsMobileViewport() ? 'collapsed' : 'expanded');
     const [isMapModesOpen, setIsMapModesOpen] = useState(false);
     const [isCompassModeOpen, setIsCompassModeOpen] = useState(false);
     const isLandscape = useMediaQuery(LANDSCAPE_QUERY);
@@ -137,7 +130,6 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const compassCardRef = useRef<HTMLDivElement | null>(null);
     const openedByLandscapeRef = useRef(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const isLayerMenuOpen = isMobileViewport ? mobileSheetLevel !== 'collapsed' : isDesktopLayerMenuOpen;
     const currentLocation = useMemo(
         () => userPosition ? { lng: userPosition.coords.longitude, lat: userPosition.coords.latitude } : null,
         [userPosition],
@@ -164,16 +156,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const rotation = deviceHeading.status === 'active' && deviceHeading.heading !== null ? deviceHeading.heading : normalizeAngle(mapBearing);
 
     useEffect(() => {
-        const handleViewportResize = () => {
-            const nextIsMobile = getIsMobileViewport();
-            setIsMobileViewport((current) => {
-                if (current !== nextIsMobile) {
-                    setMobileSheetLevel(nextIsMobile ? 'collapsed' : 'expanded');
-                    setIsDesktopLayerMenuOpen(!nextIsMobile);
-                }
-                return nextIsMobile;
-            });
-        };
+        const handleViewportResize = () => setIsMobileViewport(getIsMobileViewport());
         window.addEventListener('resize', handleViewportResize);
         return () => window.removeEventListener('resize', handleViewportResize);
     }, []);
@@ -334,16 +317,17 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     }, [isPostMode, startUserLocation]);
     usePostPopups(map, isLoaded, posts, isPostMode, favoriteIds, handleTogglePostFavorite, isUnlocked, currentLocation);
 
-    // 投稿一覧から選んだとき: 解放済みは本当の地点へ、まだの投稿はだいたいの場所の円が収まるように動かす
+    // メニューの投稿一覧から選んだとき: 解放済みは本当の地点へ、まだの投稿はだいたいの場所の円が収まるように動かす。
+    // 一覧は投稿モードに切り替えてから開くが、念のためここでも投稿モードにする（円やカードは投稿モードでだけ出る）
     const handlePostListClick = useCallback((post: Post) => {
+        onModeChange('analyze');
         if (isUnlocked(post)) {
             map?.flyTo({ center: [post.location.lng, post.location.lat], zoom: 16, duration: 1200 });
         } else {
             const { center } = approximateArea(post);
             map?.flyTo({ center: [center.lng, center.lat], zoom: 14.5, duration: 1200 });
         }
-        if (isMobileViewport) setMobileSheetLevel('collapsed');
-    }, [isMobileViewport, isUnlocked, map]);
+    }, [isUnlocked, map, onModeChange]);
 
     // お気に入りの一覧から選んだら、その地点へ動かして検索結果と同じピン（お気に入りの解除もできる）を立てる
     const handleSelectFavorite = useCallback((favorite: FavoritePlace) => {
@@ -351,9 +335,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         setSearchQuery(favorite.name);
         setSearchPlace({ lng: favorite.lng, lat: favorite.lat, name: favorite.name, revealId: Date.now() });
         setShowResults(false);
-        // 投稿モードのスマホでは、シートが地図とピンを隠さないよう閉じる（検索結果を選んだときと同じ）
-        if (isMobileViewport && isPostMode) setMobileSheetLevel('collapsed');
-    }, [isMobileViewport, isPostMode, map]);
+    }, [map]);
 
     // 「現在地をお気に入りに追加」: 位置がまだなければ取得を始め、届いたときに追加する。取得に失敗したら待つのをやめる
     // （理由は画面上部のエラー表示に出る）
@@ -391,9 +373,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         setSearchQuery(name);
         setSearchPlace({ lng: result.lng, lat: result.lat, name, revealId: Date.now() });
         setShowResults(false);
-        // 投稿モードのシートは検索結果を見せるために広げている。選んだら、飛んだ先の地図が見えるよう閉じる
-        if (isMobileViewport && isPostMode) setMobileSheetLevel('collapsed');
-    }, [isMobileViewport, isPostMode, map]);
+    }, [map]);
 
     const handleLocate = useCallback(() => {
         if (!map) return;
@@ -471,7 +451,27 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         return () => window.removeEventListener('pointerdown', handleFirstPointer, { capture: true });
     }, [deviceHeadingStatus, headingSensorWanted, startDeviceHeading]);
 
-    // 検索バーは上の帯にあり、結果を自分の下に出すので、シートは触らない
+    // 二本指で地図を操作している間（ピンチ・回転・傾け）は、画面の部品を押せなくする（指が当たって誤作動するのを防ぐ）。
+    // 見た目と無効化は index.css の [data-multi-touch]。タッチの本数は画面全体で数える（ボタンの上で始めた操作も含む）
+    useEffect(() => {
+        const root = document.documentElement;
+        const update = (event: TouchEvent) => {
+            if (event.touches.length >= 2) root.dataset.multiTouch = 'true';
+            else delete root.dataset.multiTouch;
+        };
+        const options = { capture: true, passive: true } as const;
+        window.addEventListener('touchstart', update, options);
+        window.addEventListener('touchend', update, options);
+        window.addEventListener('touchcancel', update, options);
+        return () => {
+            window.removeEventListener('touchstart', update, options);
+            window.removeEventListener('touchend', update, options);
+            window.removeEventListener('touchcancel', update, options);
+            delete root.dataset.multiTouch;
+        };
+    }, []);
+
+    // 検索バーは上の帯にあり、結果を自分の下に出す
     const handleSearchFocus = useCallback(() => {
         if (searchResults.length > 0) setShowResults(true);
     }, [searchResults.length]);
@@ -491,18 +491,6 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const handleSearchSubmit = useCallback(() => {
         void handleSearch(searchQuery);
     }, [handleSearch, searchQuery]);
-
-    const handleMobileSheetToggle = useCallback(() => {
-        setMobileSheetLevel((level) => nextMobileSheetLevel(level));
-    }, []);
-
-    const handleLayerMenuToggle = useCallback(() => {
-        if (isMobileViewport) {
-            handleMobileSheetToggle();
-            return;
-        }
-        setIsDesktopLayerMenuOpen((open) => !open);
-    }, [handleMobileSheetToggle, isMobileViewport]);
 
     const handlePanelViewChange = useCallback((nextPanelView: PanelView) => {
         setPanelView(writeStoredPanelView(nextPanelView));
@@ -566,10 +554,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
 
                 {/* ミニコンパスは探索・投稿の両モードで出す（分割表示中は上半分に本体があるので隠す） */}
                 {!isCompassModeOpen && (
-                    // 左上。PC の投稿モードではサイドパネルの右に置く
-                    <div
-                        className={`absolute left-4 top-[calc(16px+env(safe-area-inset-top))] z-[4500] transition-[left] duration-300 ${isPostMode && isDesktopLayerMenuOpen ? 'md:left-[352px]' : ''}`}
-                    >
+                    // 左上
+                    <div className="absolute left-4 top-[calc(16px+env(safe-area-inset-top))] z-[4500]">
                         <MiniCompass
                             data={compassViewModel}
                             rotation={rotation}
@@ -605,6 +591,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     isLocatingFavorite={isLocatingFavorite}
                     favoriteLocateError={favoriteLocateError}
                     onViewPosts={() => onModeChange('analyze')}
+                    posts={posts}
+                    isPostUnlocked={isUnlocked}
+                    onSelectPost={handlePostListClick}
                     panelView={panelView}
                     onPanelViewChange={handlePanelViewChange}
                     debugMode={debugMode}
@@ -618,7 +607,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     headingSensorNote={headingSensorOn ? null : deviceHeading.error}
                 />
 
-                <div className="pointer-events-none absolute left-4 right-4 top-[calc(84px+env(safe-area-inset-top))] z-[7000] flex flex-col gap-2 md:left-auto md:right-4 md:w-[520px]">
+                {/* お知らせ・エラーは地図の部品より上、メニュー（z 6000）・表示モード画面より下に出す。
+                    メニューの「投稿を見る」で投稿モードに入ると現在地の取得が始まり、そのエラーが一覧の見出しを隠していたため */}
+                <div className="pointer-events-none absolute left-4 right-4 top-[calc(84px+env(safe-area-inset-top))] z-[5500] flex flex-col gap-2 md:left-auto md:right-4 md:w-[520px]">
                     {revealNotice && (
                         <div role="status" className="pointer-events-auto flex items-center justify-between gap-2 rounded-full border border-violet-300/30 bg-violet-700/95 px-4 py-2 text-xs font-bold text-white shadow-lg animate-ui-drop">
                             <span>{revealNotice}</span>
@@ -647,7 +638,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     )}
                 </div>
 
-                {/* 探索モードは面を持たない浮かぶ検索バー。上の帯のミニコンパスとモード切替のあいだに置き、縦の中心を揃える。
+                {/* 探索・投稿の両モードで、面を持たない浮かぶ検索バー。上の帯のミニコンパスとモード切替のあいだに置き、縦の中心を揃える。
                     検索結果は、スマホでは画面幅いっぱい、PC ではバーの幅で下に開く。コンパスモード中は地図側を広く使うため隠す */}
                 {!isCompassModeOpen && (
                     <FloatingSearchBar
@@ -664,64 +655,30 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                         resultsPlacement={isMobileViewport ? 'below-screen' : 'below'}
                         style={isMobileViewport
                             ? { left: SEARCH_BAR_LEFT, right: MOBILE_SEARCH_BAR_RIGHT }
-                            : { left: isPostMode && isDesktopLayerMenuOpen ? DESKTOP_POST_SEARCH_BAR_LEFT : SEARCH_BAR_LEFT, width: DESKTOP_SEARCH_WIDTH }}
+                            : { left: SEARCH_BAR_LEFT, width: DESKTOP_SEARCH_WIDTH }}
                         className="absolute top-[calc(16px+(54px-var(--btn-h))/2+env(safe-area-inset-top))] z-[4600] animate-ui-drop"
                     />
                 )}
 
-                {/* 投稿モードは投稿一覧があるので、シート（スマホ）／サイドパネル（PC）を使う。コンパスモード中は隠す */}
-                {!isCompassModeOpen && isPostMode && (
-                    <LayerMenu
-                        isOpen={isLayerMenuOpen}
-                        onToggle={handleLayerMenuToggle}
-                        mobileLevel={isMobileViewport ? mobileSheetLevel : undefined}
-                    >
-                        <div className="flex h-full min-h-0 flex-col bg-transparent text-white">
-                            {/* 検索とメニューは上の帯の検索バーにあるので、ここは見出しと投稿の一覧だけ */}
-                            <div className="shrink-0 border-b border-white/10 px-4 pb-3 pt-1 md:p-4">
-                                <p className="text-[10px] font-semibold tracking-[0.18em] text-white/40">POSTS</p>
-                                <p className="mt-1 text-sm font-semibold text-white/85">夜景の投稿</p>
-                            </div>
-
-                            {(!isMobileViewport || mobileSheetLevel !== 'collapsed') && (
-                                <div className="min-h-0 flex-1 overflow-y-auto">
-                                    <PostListPanel
-                                        posts={posts}
-                                        isUnlocked={isUnlocked}
-                                        onPostClick={handlePostListClick}
-                                    />
-                                </div>
-                            )}
-
-                        </div>
-                    </LayerMenu>
-                )}
-
-                {/* 投稿モードのシート最大時はボタン列が右上のモード切替と重なるので隠す */}
-                {(isCompassModeOpen || !(isPostMode && isMobileViewport && mobileSheetLevel === 'expanded')) && (
+                {/* 投稿の一覧は地図の上に出さず、メニュー →「投稿を見る」で見る（地図の円とカードを隠さないため） */}
                 <MapControlStack
                     reserveTopSlot={isPostMode && !isCompassModeOpen}
                     onLocate={handleLocate}
                     onOpenMapModes={() => setIsMapModesOpen(true)}
                     isMapModesOpen={isMapModesOpen}
-                    style={isCompassModeOpen
-                        ? { bottom: SPLIT_CONTROL_BOTTOM }
-                        : !isMobileViewport ? undefined
-                        : isPostMode ? { bottom: MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] }
-                        : { bottom: SPLIT_CONTROL_BOTTOM }}
+                    style={isCompassModeOpen || isMobileViewport ? { bottom: SPLIT_CONTROL_BOTTOM } : undefined}
                     // 横向きのノッチ側に隠れないよう、右端は安全領域の内側に置く
                     className="absolute right-[max(1rem,env(safe-area-inset-right))] z-[4500] md:bottom-8 md:right-[max(2rem,env(safe-area-inset-right))]"
                 />
-                )}
 
-                {/* 投稿ボタンはボタン列のピルに重ねるので、ボタン列が動く・隠れる間（コンパスモード中・シート最大時）は出さない */}
-                {isPostMode && !isCompassModeOpen && !(isMobileViewport && mobileSheetLevel === 'expanded') && (
+                {/* 投稿ボタンはボタン列のピルに重ねるので、ボタン列が動く間（コンパスモード中）は出さない */}
+                {isPostMode && !isCompassModeOpen && (
                     <PostComposer
                         map={map}
                         currentLocation={currentLocation}
                         onRequestLocation={startUserLocation}
                         onPosted={reloadPosts}
-                        style={{ bottom: `calc(${isMobileViewport ? MOBILE_SHEET_CONTROL_BOTTOMS[mobileSheetLevel] : '32px'} + ${CONTROL_STACK_HEIGHT})` }}
+                        style={{ bottom: `calc(${isMobileViewport ? SPLIT_CONTROL_BOTTOM : '32px'} + ${CONTROL_STACK_HEIGHT})` }}
                     />
                 )}
 

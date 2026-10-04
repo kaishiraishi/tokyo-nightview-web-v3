@@ -5,8 +5,9 @@ import { favoriteId } from '../lib/favorites';
 import { destinationPoint, type MapLocation } from '../lib/potentialSampler';
 import { approximateArea, distanceMeters, formatDistanceAway, UNLOCK_RADIUS_M } from '../lib/postReveal';
 
-// このズーム以上で写真付きのカードを出す。それより引いたときは、カードの代わりに紫の点と件数の丸（クラスタ）で見せる
-const IMAGE_ZOOM_THRESHOLD = 13;
+// このズーム以上で写真付きのカードを出す。それより引いたときは、紫の点と件数の丸（クラスタ）で見せ、
+// 丸から分かれて 1 件の点になった投稿にだけ、点の上にコメント（キャプション 1 行）を出す
+const IMAGE_ZOOM_THRESHOLD = 12;
 // 着く前のカードの「近づくと正確な場所がわかります」は、その場所まで寄ったとき（このズーム以上）だけ出す
 const HINT_ZOOM_THRESHOLD = 15;
 const AREA_SOURCE_ID = 'post-areas';
@@ -54,6 +55,11 @@ function buildLockedHtml(post: Post, showHint: boolean, distance: number | null)
     return `<div class="night-popup-card">${photoUrl ? `<img class="night-popup-img" src="${escapeHtml(photoUrl)}" alt="" loading="lazy" decoding="async" width="232" height="131" />` : ''}<div class="night-popup-text"><div class="night-popup-caption">${caption}</div><div class="night-popup-meta-row"><span class="night-popup-meta">${area} 付近${away}</span></div>${showHint ? `<div class="night-popup-hint">${UNLOCK_RADIUS_M}m 以内に近づくと正確な場所がわかります</div>` : ''}</div></div>`;
 }
 
+// 引きのときの、1 件の点の上に出すコメント。写真と場所は出さない（カードはズームしたときだけ）
+function buildBubbleHtml(post: Post): string {
+    return `<div class="night-popup-bubble">${escapeHtml(post.caption || '（コメントなし）')}</div>`;
+}
+
 function areaPolygon(center: MapLocation, radius: number): GeoJSON.Feature {
     const ring = Array.from({ length: AREA_SEGMENTS + 1 }, (_, index) => {
         const point = destinationPoint(center, (index / AREA_SEGMENTS) * 360, radius);
@@ -64,7 +70,7 @@ function areaPolygon(center: MapLocation, radius: number): GeoJSON.Feature {
 
 // 投稿を MapLibre のポップアップとして地図に重ねる。enabled が false の間は何も残さない。
 // 解放済み（isUnlocked）の投稿は本当の地点に写真付きのカード、まだの投稿はずらした円（だいたいの場所）と写真付きのカード。
-// 引き（ズーム 13 未満）ではカードを隠し、紫の点と件数の丸（クラスタ）で見せる。
+// 引き（ズーム 12 未満）ではカードを隠し、紫の点と件数の丸（クラスタ）で見せる。
 // favoriteIds: お気に入り登録済みの場所（favoriteId）。カードのハートの塗りに使う
 export function usePostPopups(
     map: maplibregl.Map | null,
@@ -92,12 +98,22 @@ export function usePostPopups(
         if (!map || !isLoaded || !enabled) return;
 
         const popups = new Map<string, { popup: maplibregl.Popup; post: Post; unlocked: boolean }>();
+        // カードが重なったときは、タップしたカードを前に出す。index.css が .maplibregl-popup に z-index: 2000 !important を
+        // 付けているので、上書きするにも important が要る。押すたびに番号を増やすので、最後に押したものが一番前になる
+        let frontZ = 2000;
         let expanded = map.getZoom() >= IMAGE_ZOOM_THRESHOLD;
         let showHint = map.getZoom() >= HINT_ZOOM_THRESHOLD;
+        // 引きのときに、件数の丸にまとめられず 1 件の点として見えている投稿（post.id）
+        let separated = new Set<string>();
         const isFavorite = (post: Post) => favoriteIdsRef.current.has(favoriteId(post.location.lng, post.location.lat));
         const render = (popup: maplibregl.Popup, post: Post, unlocked: boolean) => {
-            // 引きでは点とクラスタで見せるので、カードは隠す
-            popup.getElement().style.display = expanded ? '' : 'none';
+            // 引きでは、丸にまとめられている投稿は何も出さず、1 件の点になった投稿はコメントだけを出す
+            const showBubble = !expanded && separated.has(post.id);
+            popup.getElement().style.display = expanded || showBubble ? '' : 'none';
+            if (showBubble) {
+                popup.setHTML(buildBubbleHtml(post));
+                return;
+            }
             if (!expanded) return;
             if (unlocked) {
                 popup.setHTML(buildPopupHtml(post, isFavorite(post)));
@@ -115,7 +131,7 @@ export function usePostPopups(
             const area = unlocked ? null : approximateArea(post);
             if (area) lockedAreas.push(areaPolygon(area.center, area.radius));
             const anchorPoint = area ? area.center : { lng: post.location.lng, lat: post.location.lat };
-            points.push({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [anchorPoint.lng, anchorPoint.lat] } });
+            points.push({ type: 'Feature', properties: { postId: post.id }, geometry: { type: 'Point', coordinates: [anchorPoint.lng, anchorPoint.lat] } });
             const popup = new maplibregl.Popup({
                 closeButton: false,
                 closeOnClick: false,
@@ -131,9 +147,18 @@ export function usePostPopups(
                 .addTo(map);
             render(popup, post, unlocked);
 
-            // ハートは描き直しで作り替わるので、ポップアップの要素で受ける。地図のクリック（投稿の地点選択）には渡さない
+            // ハートは描き直しで作り替わるので、ポップアップの要素で受ける。地図のクリック（投稿の地点選択）には渡さない。
+            // 引きのときのコメントを押したら、点を押したときと同じく、カードが出るズームまで寄る
             popup.getElement().addEventListener('click', (event) => {
-                if (!(event.target instanceof Element) || !event.target.closest('.night-popup-fav')) return;
+                if (!(event.target instanceof Element)) return;
+                frontZ += 1;
+                popup.getElement().style.setProperty('z-index', String(frontZ), 'important');
+                if (event.target.closest('.night-popup-bubble')) {
+                    event.stopPropagation();
+                    map.easeTo({ center: [anchorPoint.lng, anchorPoint.lat], zoom: IMAGE_ZOOM_THRESHOLD + 1, duration: 600 });
+                    return;
+                }
+                if (!event.target.closest('.night-popup-fav')) return;
                 event.stopPropagation();
                 toggleRef.current(post);
             });
@@ -235,12 +260,31 @@ export function usePostPopups(
             showHint = nextHint;
             renderAll();
         };
+        // どの投稿が 1 件の点として見えているかは、MapLibre がまとめた結果（読み込み済みのタイル）から読む。
+        // まとめ方はズームごとに変わり、新しいズームのタイルは非同期に作られるので、ソースの更新と移動の終わりで読み直す
+        const updateSeparated = () => {
+            const next = new Set<string>();
+            for (const feature of map.querySourceFeatures(POINT_SOURCE_ID)) {
+                const postId = feature.properties?.postId;
+                if (!feature.properties?.cluster && typeof postId === 'string') next.add(postId);
+            }
+            if (next.size === separated.size && [...next].every((id) => separated.has(id))) return;
+            separated = next;
+            renderAll();
+        };
+        const handleSourceData = (event: maplibregl.MapSourceDataEvent) => {
+            if (event.sourceId === POINT_SOURCE_ID && event.isSourceLoaded) updateSeparated();
+        };
         map.on('zoom', handleZoom);
+        map.on('sourcedata', handleSourceData);
+        map.on('moveend', updateSeparated);
         rerenderRef.current = renderAll;
 
         return () => {
             rerenderRef.current = null;
             map.off('zoom', handleZoom);
+            map.off('sourcedata', handleSourceData);
+            map.off('moveend', updateSeparated);
             map.off('click', CLUSTER_LAYER_ID, handleClusterClick);
             map.off('click', POINT_LAYER_ID, handlePointClick);
             for (const layer of [CLUSTER_LAYER_ID, POINT_LAYER_ID]) {

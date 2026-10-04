@@ -13,6 +13,8 @@ import type { FanConfig } from '../map/types';
 import { PanelViewSelector, type PanelView } from '../potential/PanelViewSelector';
 import type { FavoritePlace } from '../../lib/favorites';
 import { FavoritesView } from './FavoritesView';
+import { PostsView } from './PostsView';
+import type { Post } from '../../lib/postsApi';
 import { GuideView } from './GuideView';
 import { AccountView } from './AccountView';
 import { DataAndAboutSettings } from './DataAndAboutSettings';
@@ -20,12 +22,13 @@ import { readDemoAccount } from '../../lib/demoAccount';
 import { closeButton, glassSurface, textMuted, textPrimary } from '../../styles/ui';
 import buildings3dExample from '../../assets/settings/buildings-3d.webp';
 
-type MenuView = 'main' | 'settings' | 'favorites' | 'guide' | 'account';
+type MenuView = 'main' | 'settings' | 'favorites' | 'posts' | 'guide' | 'account';
 
 const VIEW_TITLES: Record<MenuView, string> = {
   main: 'メニュー',
   settings: '設定',
   favorites: 'お気に入り',
+  posts: '夜景の投稿',
   guide: 'はじめてガイド',
   account: 'アカウント',
 };
@@ -33,7 +36,8 @@ const VIEW_TITLES: Record<MenuView, string> = {
 type AppMenuProps = {
   isOpen: boolean;
   onClose: () => void;
-  postCount: number;
+  // 投稿の件数。投稿モードに入るまで投稿は読み込まないので、まだ分からないときは undefined（件数を出さない）
+  postCount?: number;
   // お気に入り（端末内保存）。渡されないとき（旧 TopBar）はお気に入りの行を出さない
   favorites?: FavoritePlace[];
   onSelectFavorite?: (favorite: FavoritePlace) => void;
@@ -41,7 +45,11 @@ type AppMenuProps = {
   onAddCurrentLocationFavorite?: () => void;
   isLocatingFavorite?: boolean;
   favoriteLocateError?: string | null;
+  // 「投稿を見る」: 投稿モードに切り替える（投稿の読み込みが始まる）。一覧（posts と onSelectPost）があればメニューの中に一覧を開く
   onViewPosts?: () => void;
+  posts?: Post[];
+  isPostUnlocked?: (post: Post) => boolean;
+  onSelectPost?: (post: Post) => void;
   fanConfig?: FanConfig;
   onFanConfigChange?: (config: FanConfig) => void;
   panelView?: PanelView;
@@ -70,6 +78,9 @@ export function AppMenu({
   isLocatingFavorite = false,
   favoriteLocateError = null,
   onViewPosts,
+  posts,
+  isPostUnlocked,
+  onSelectPost,
   fanConfig,
   onFanConfigChange,
   panelView,
@@ -93,6 +104,7 @@ export function AppMenu({
   const hasDebugModeSetting = debugMode !== undefined && onDebugModeChange !== undefined;
   const hasBuildingsSetting = buildingsEnabled !== undefined && onBuildingsEnabledChange !== undefined;
   const hasHeadingSensorSetting = headingSensorOn !== undefined && onHeadingSensorChange !== undefined;
+  const hasPostList = posts !== undefined && isPostUnlocked !== undefined && onSelectPost !== undefined;
   const hasFavorites = favorites !== undefined && onSelectFavorite !== undefined && onRemoveFavorite !== undefined && onAddCurrentLocationFavorite !== undefined;
 
   const handleClose = () => {
@@ -103,7 +115,7 @@ export function AppMenu({
   return (
     <div className="pointer-events-auto fixed inset-0 z-[6000] flex items-center justify-center px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+        className="absolute inset-0 bg-black/60 backdrop-blur-md animate-ui-fade"
         onClick={(event) => {
           event.stopPropagation();
           handleClose();
@@ -168,7 +180,8 @@ export function AppMenu({
                     value={postCount}
                     onClick={() => {
                       onViewPosts?.();
-                      handleClose();
+                      if (hasPostList) setActiveView('posts');
+                      else handleClose();
                     }}
                     isLast
                   />
@@ -194,6 +207,19 @@ export function AppMenu({
                 isLocating={isLocatingFavorite}
                 locateError={favoriteLocateError}
               />
+              </div>
+            )}
+
+            {activeView === 'posts' && hasPostList && (
+              <div className="animate-ui-view">
+                <PostsView
+                  posts={posts}
+                  isUnlocked={isPostUnlocked}
+                  onSelect={(post) => {
+                    onSelectPost(post);
+                    handleClose();
+                  }}
+                />
               </div>
             )}
 

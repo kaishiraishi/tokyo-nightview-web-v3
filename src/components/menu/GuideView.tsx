@@ -36,7 +36,7 @@ const STEPS: Array<{ icon: ReactNode; title: string; body: string[] }> = [
     {
         icon: <Image size={20} aria-hidden="true" />,
         title: 'みんなの投稿を見る',
-        body: ['右上の切り替えで投稿モードにすると、地図上に夜景の投稿が出ます。カメラのボタンから投稿できます。'],
+        body: ['右上の切り替えで投稿モードにすると、地図上に夜景の投稿が出ます。右下の＋ボタンから投稿できます。投稿の一覧は、メニューの「投稿を見る」で見られます。'],
     },
 ];
 

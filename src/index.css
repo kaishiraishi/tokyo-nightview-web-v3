@@ -114,6 +114,22 @@ body {
     animation: night-popup-img 200ms ease-out both;
 }
 
+/* 引き（ズーム 12 未満）で、件数の丸から分かれて 1 件の点になった投稿の上に出すコメント。1 行で切る。
+   面と枠はカード（.night-popup .maplibregl-popup-content）と同じ。押すとカードが出るズームまで寄る */
+.night-popup-bubble {
+    max-width: 168px;
+    padding: 6px 12px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
 /* 写真の下の文字は、写真の左右から 4px 内側に揃える */
 .night-popup-text {
     display: flex;
@@ -239,6 +255,10 @@ body {
     from { opacity: 0; transform: scale(0.97); }
     to { opacity: 1; transform: scale(1); }
 }
+@keyframes ui-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
 @keyframes ui-view {
     from { opacity: 0; transform: translateX(12px); }
     to { opacity: 1; transform: translateX(0); }
@@ -247,6 +267,8 @@ body {
 .animate-ui-drop { animation: ui-drop 180ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 .animate-ui-pop { animation: ui-pop 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 .animate-ui-view { animation: ui-view 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+/* fade: 画面を覆う暗い幕（メニュー・表示モード画面）。カードの ui-pop と同時に、幕はただ静かに濃くなる */
+.animate-ui-fade { animation: ui-fade 200ms ease-out backwards; }
 
 @media (prefers-reduced-motion: reduce) {
     .animate-sheet-rise,
@@ -254,7 +276,8 @@ body {
     .animate-ui-rise,
     .animate-ui-drop,
     .animate-ui-pop,
-    .animate-ui-view {
+    .animate-ui-view,
+    .animate-ui-fade {
         animation: none;
     }
 }
@@ -345,4 +368,21 @@ body {
     border-radius: 9999px;
     background: var(--pin-color);
     border: 1.5px solid rgba(5, 7, 11, 0.85);
+}
+
+/* 二本指で地図を操作している間は、地図の上に浮かぶ部品（ボタン・検索欄・ポップアップ）を押せなくして、少し薄くする。
+   地図そのもの（canvas）は対象外 */
+html[data-multi-touch] button,
+html[data-multi-touch] input,
+html[data-multi-touch] textarea,
+html[data-multi-touch] a,
+html[data-multi-touch] summary {
+    pointer-events: none;
+}
+html[data-multi-touch] button,
+html[data-multi-touch] input,
+html[data-multi-touch] textarea,
+html[data-multi-touch] .maplibregl-popup,
+html[data-multi-touch] .maplibregl-ctrl-attrib {
+    opacity: 0.5;
 }

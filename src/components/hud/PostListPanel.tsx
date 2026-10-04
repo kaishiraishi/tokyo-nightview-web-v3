@@ -20,7 +20,7 @@ export function PostListPanel({ posts, isLoading, onPostClick, isUnlocked = () =
                 <Inbox className="w-12 h-12 opacity-20 text-white" />
                 <p className="text-white/50 text-sm">まだ投稿がありません</p>
                 <p className="text-white/30 text-xs text-center">
-                    右下のカメラボタンから<br/>最初の投稿をしてみましょう
+                    右下の＋ボタンから<br/>最初の投稿をしてみましょう
                 </p>
             </div>
         );
