@@ -27,3 +27,7 @@ tiles-work/
 # 外部のデザインスキル（npx impeccable install / npx skills add で再導入できる）
 .claude/
 skills-lock.json
+
+# スクリーンショット・モック画像（約 100MB。作り方は docs/screenshots/README.md）
+docs/screenshots/*/
+scripts/mockup/.tmp.png
