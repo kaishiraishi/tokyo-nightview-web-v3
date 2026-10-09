@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Compass, Heart, Image, Layers, Search } from '../ui/icons';
+import { Compass, Heart, Image, Layers, Search, Sparkle } from '../ui/icons';
 import { textMuted, textPrimary } from '../../styles/ui';
 
 // はじめてガイド。画面にある操作だけを、使う順に説明する（値の算出方法は書かない。表示モード画面の
@@ -40,9 +40,25 @@ const STEPS: Array<{ icon: ReactNode; title: string; body: string[] }> = [
     },
 ];
 
-export function GuideView() {
+// onStartTutorial: 初回に出るチュートリアル（実際の画面の部品を照らして説明する）をもう一度見る。渡されないときはボタンを出さない
+export function GuideView({ onStartTutorial }: { onStartTutorial?: () => void }) {
     return (
         <div className="space-y-4">
+            {onStartTutorial && (
+                <button
+                    type="button"
+                    onClick={onStartTutorial}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-[1.5rem] border border-violet-300/30 bg-violet-700/20 p-4 text-left transition-colors hover:bg-violet-700/30"
+                >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violet-700 text-white">
+                        <Sparkle size={18} aria-hidden="true" />
+                    </span>
+                    <span className={`flex-1 text-sm font-semibold ${textPrimary}`}>
+                        画面で見るチュートリアル
+                        <span className={`mt-0.5 block text-xs font-normal ${textMuted}`}>画面の部品を照らしながら、順に案内します</span>
+                    </span>
+                </button>
+            )}
             <ol className="space-y-3">
                 {STEPS.map((step, index) => (
                     <li key={step.title} className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">

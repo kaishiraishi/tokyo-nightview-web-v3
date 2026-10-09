@@ -11,6 +11,7 @@ import { MapModeToggle } from './MapModeToggle';
 import { MiniCompass } from './MiniCompass';
 import { UserLocationMarker } from './UserLocationMarker';
 import { PostComposer } from './PostComposer';
+import { TutorialOverlay } from '../onboarding/TutorialOverlay';
 import { readStoredPanelView, type PanelView, writeStoredPanelView } from './PanelViewSelector';
 import {
     readStoredBuildingsEnabled,
@@ -18,11 +19,13 @@ import {
     readStoredHeadingSensor,
     readStoredPotentialScope,
     readStoredRevealAllPosts,
+    readStoredTutorialSeen,
     writeStoredBuildingsEnabled,
     writeStoredDebugMode,
     writeStoredHeadingSensor,
     writeStoredPotentialScope,
     writeStoredRevealAllPosts,
+    writeStoredTutorialSeen,
     type PotentialDisplayScope,
 } from '../../lib/storedSettings';
 import { type PotentialRange } from './prototypes/types';
@@ -130,6 +133,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const compassCardRef = useRef<HTMLDivElement | null>(null);
     const openedByLandscapeRef = useRef(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    // 初めて開いた人にだけ、最初にチュートリアルを出す（nightview.tutorialSeen）
+    const [isTutorialOpen, setIsTutorialOpen] = useState(() => !readStoredTutorialSeen());
     const currentLocation = useMemo(
         () => userPosition ? { lng: userPosition.coords.longitude, lat: userPosition.coords.latitude } : null,
         [userPosition],
@@ -446,9 +451,20 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     useEffect(() => {
         if (!headingSensorWanted || deviceHeadingStatus !== 'off') return;
         if (!window.matchMedia('(pointer: coarse)').matches) return;
+        // チュートリアル中のタップでは始めない（説明を読む前に許可の確認が出るため）。閉じるときに handleTutorialClose が始める
+        if (isTutorialOpen) return;
         const handleFirstPointer = () => startDeviceHeading();
         window.addEventListener('pointerdown', handleFirstPointer, { once: true, capture: true });
         return () => window.removeEventListener('pointerdown', handleFirstPointer, { capture: true });
+    }, [deviceHeadingStatus, headingSensorWanted, isTutorialOpen, startDeviceHeading]);
+
+    // 「はじめる」「スキップ」のクリックの中で向きセンサーを始める（iOS は許可の確認にユーザー操作が要る）
+    const handleTutorialClose = useCallback(() => {
+        writeStoredTutorialSeen(true);
+        setIsTutorialOpen(false);
+        if (headingSensorWanted && deviceHeadingStatus === 'off' && window.matchMedia('(pointer: coarse)').matches) {
+            startDeviceHeading();
+        }
     }, [deviceHeadingStatus, headingSensorWanted, startDeviceHeading]);
 
     // 二本指で地図を操作している間（ピンチ・回転・傾け）は、画面の部品を押せなくする（指が当たって誤作動するのを防ぐ）。
@@ -605,6 +621,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     headingSensorOn={headingSensorOn}
                     onHeadingSensorChange={handleHeadingSensorChange}
                     headingSensorNote={headingSensorOn ? null : deviceHeading.error}
+                    onOpenTutorial={() => setIsTutorialOpen(true)}
                 />
 
                 {/* お知らせ・エラーは地図の部品より上、メニュー（z 6000）・表示モード画面より下に出す。
@@ -694,6 +711,9 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     potentialScope={potentialScope}
                     setPotentialScope={handlePotentialScopeChange}
                 />
+
+                {/* 実際の部品を照らすので、地図の読み込み中の幕（z 7000）が消えてから出す */}
+                <TutorialOverlay isOpen={isTutorialOpen && isLoaded} onClose={handleTutorialClose} />
 
                 {!isLoaded && (
                     <div className="absolute inset-0 z-[7000] grid place-items-center bg-black text-sm text-white/60">

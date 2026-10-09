@@ -71,6 +71,7 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 - 投稿の見え方と投稿フォーム（2026-10-04、未コミット。ユーザー依頼）: (1) 引きで、件数の丸から分かれて 1 件の点になった投稿に、点の上にコメント（キャプション 1 行）を出す（以前はカードのズームまで何も出なかった。カードを出すズームは 13 → 12 に下げた）。押すとカードのズームまで寄る。重なったカードは、押したものが最前面に来る（押すたびに z-index を上げる）。点が近いとコメントが件数の丸に重なることがある (2) 投稿ボタンをカメラ → ＋ に (3) 投稿フォームを作り直した: スマホは下からのシート、PC はボタン列の左のパネル。写真 → ひとこと → 場所（2 択）→ 固定の送信ボタン。地図で選んだ場所に紫のピン。現在地がないときは送信不可。verify PASS、agent-browser（390×844 / 1280×800）でコメントの表示、フォーム、地図で選ぶ → ピン、を確認。`docs/figma-screen-spec.md` の投稿の節（17 章）は未反映
 - 二本指の操作中は部品を無効化（2026-10-04、未コミット）: `html[data-multi-touch]`（`PotentialMapView` が touchstart/end で付け外し）で、ボタン・入力・ポップアップを pointer-events none + 不透明度 0.5 に。実機の二本指では未確認
 - 動きの追加（2026-10-04）: メニュー・表示モード画面の暗い幕を `animate-ui-fade`（200ms）でふわっと、投稿モードに入ると＋の場所が `animate-ui-pop` で現れる。reduced-motion では動かさない
+- 初回のチュートリアル（2026-10-08、未コミット。ユーザー依頼）: 初めて開いた人に、実際の画面の部品を照らして説明する 6 段のコーチマーク（`src/components/onboarding/`）。部品は `data-tutorial` で探して測り、穴あきの幕で照らし、矢印つきのカード（部品の拡大図・アイコン入りの本文）を隣に出す。地図の読み込み後に表示、`nightview.tutorialSeen` で一度だけ、メニュー → 設定の「チュートリアル → もう一度見る」と、はじめてガイドの「画面で見るチュートリアル」で再表示。表示中は向きセンサーを始めず、閉じるクリックで始める。（最初は主画面の縮小図を描く方式で作ったが、ユーザーの依頼で実際の画面を照らす方式に変えた。）verify PASS、agent-browser（390×844 / 1280×800）で全段の照らす位置とカードの位置、部品がないときの中央表示、はじめる・スキップで記録 → 再読み込みで出ない → メニューから再表示、を確認。実機（iOS の許可の出る順番、スワイプ、横向き）は未確認。`docs/figma-screen-spec.md` は未反映
 - 公開（2026-10-04）: `d284c69f` を push してデプロイ済み（上の 2026-10-04 の未コミットの項目はすべてこれに含まれる）。実機（二本指の無効化、写真付きカードの切り替わり）は未確認
 
 ## Next
@@ -102,6 +103,7 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 - データ・計算: `src/lib/potentialSampler.ts`（色ランプ・閾値・`POTENTIAL_DISPLAY_THRESHOLD`）、`potentialQuantiles.ts`、`potentialStats.ts`、`src/lib/favorites.ts`、`src/lib/storedSettings.ts`、`src/lib/demoAccount.ts`
 - タイル生成: `scripts/make-potential-tiles.sh`、`scripts/bake-potential-tiles.py`、`scripts/potential-quantiles.py`。対象範囲の形は `public/target-area.geojson`（作り方は `PROJECT.md` の Data pipeline）
 - 公開・検証: `.github/workflows/deploy.yml`、`vite.config.ts`、`scripts/verify.sh`
+- iPhone 16 のスクリーンショット・モック画像（44 画面、HIG に沿った見た目）: 作り方は `docs/screenshots/README.md`、スクリプトは `scripts/mockup/`。画像（`docs/screenshots/*/`）は git 管理外
 - Figma 再現指示書: `docs/figma-screen-spec.md`（2026-10-03 の画面から全面改訂。スマホのみ。デザインルール・トークン・全画面の寸法、コンパス関係はデータ → 形・回転・座標まで詳細）。画面の見た目を変えたら合わせて直す。全幅の Directional Field カードは `docs/directional-field-figma.md`
 
 ## Verification
@@ -122,9 +124,9 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 - タイルを作り直したら、2 系統とも再生成し、`python3 scripts/potential-quantiles.py` で順位表も作り直してコミットする
 - 現在地の watch は、現在地ボタン・コンパスモード・お気に入りの現在地追加・投稿モードに入ったときに開始する
 - 端末の向きは画面の表示にだけ使い、保存・送信しない。現在地は、投稿したとき（送信）と「現在地をお気に入りに追加」したとき（端末に保存）だけ残る
-- 端末に保存するキー（`localStorage`、すべて `nightview.` で始まる）: 設定各種、`favorites`、`unlockedPosts`、`revealAllPosts`、`demoAccount`、`potentialScope`、`headingSensor`
+- 端末に保存するキー（`localStorage`、すべて `nightview.` で始まる）: 設定各種、`favorites`、`unlockedPosts`、`revealAllPosts`、`demoAccount`、`potentialScope`、`headingSensor`、`tutorialSeen`
 - Street View: Maps URLs を別タブで開くのみ（デバッグモードのピンのポップアップ）。Maps Platform ToS §3.2.3(e)
 
 ## Last updated
 
-2026-10-03
+2026-10-08

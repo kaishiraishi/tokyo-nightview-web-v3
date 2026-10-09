@@ -14,7 +14,7 @@ type FloatingSearchBarProps = Omit<ComponentProps<typeof SearchField>, 'variant'
 // 入力中は枠を淡い紫にする（欄自体は透明で outline も消しているため、フォーカスの位置がここでしか分からない）
 export function FloatingSearchBar({ onOpenMenu, className = '', style, ...searchProps }: FloatingSearchBarProps) {
     return (
-        <div style={style} className={`flex items-center gap-1 rounded-full ${glassControl} p-1 transition-colors focus-within:border-violet-300/60 ${className}`}>
+        <div data-tutorial="search" style={style} className={`flex items-center gap-1 rounded-full ${glassControl} p-1 transition-colors focus-within:border-violet-300/60 ${className}`}>
             <button
                 type="button"
                 onClick={onOpenMenu}

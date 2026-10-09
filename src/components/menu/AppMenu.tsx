@@ -7,6 +7,7 @@ import {
   BookOpen,
   ChevronLeft,
   User,
+  Sparkle,
 } from '../ui/icons';
 import { type ReactNode, useState } from 'react';
 import type { FanConfig } from '../map/types';
@@ -65,6 +66,8 @@ type AppMenuProps = {
   onHeadingSensorChange?: (enabled: boolean) => void;
   // 許可が拒否された・センサーがない、などで開始できなかった理由
   headingSensorNote?: string | null;
+  // 初回のチュートリアルをもう一度開く（設定と、はじめてガイドのページから）
+  onOpenTutorial?: () => void;
 };
 
 export function AppMenu({
@@ -94,6 +97,7 @@ export function AppMenu({
   headingSensorOn,
   onHeadingSensorChange,
   headingSensorNote,
+  onOpenTutorial,
 }: AppMenuProps) {
   const [activeView, setActiveView] = useState<MenuView>('main');
 
@@ -231,7 +235,12 @@ export function AppMenu({
 
             {activeView === 'guide' && (
               <div className="animate-ui-view">
-                <GuideView />
+                <GuideView
+                  onStartTutorial={onOpenTutorial && (() => {
+                    handleClose();
+                    onOpenTutorial();
+                  })}
+                />
               </div>
             )}
 
@@ -331,6 +340,23 @@ export function AppMenu({
                         地図上で表示する方向・距離パネルを選択できます。
                       </p>
                       <PanelViewSelector value={panelView} onChange={onPanelViewChange} />
+                    </div>
+                  </section>
+                )}
+
+                {onOpenTutorial && (
+                  <section>
+                    <h3 className={`mb-3 px-2 text-sm font-semibold ${textPrimary}`}>チュートリアル</h3>
+                    <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.03] shadow-inner">
+                      <MenuRow
+                        icon={<Sparkle size={20} className="text-violet-200" />}
+                        label="もう一度見る"
+                        onClick={() => {
+                          handleClose();
+                          onOpenTutorial();
+                        }}
+                        isLast
+                      />
                     </div>
                   </section>
                 )}

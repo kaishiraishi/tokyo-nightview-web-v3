@@ -23,6 +23,7 @@ export function MiniCompass({ data, rotation, range, isLoading, facing, onClick 
     return (
         <button
             type="button"
+            data-tutorial="compass"
             onClick={onClick}
             aria-label={`コンパスモードを開く（範囲 ${label}）`}
             title="コンパスモード"

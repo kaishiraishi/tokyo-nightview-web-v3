@@ -269,6 +269,18 @@ body {
 .animate-ui-view { animation: ui-view 240ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 /* fade: 画面を覆う暗い幕（メニュー・表示モード画面）。カードの ui-pop と同時に、幕はただ静かに濃くなる */
 .animate-ui-fade { animation: ui-fade 200ms ease-out backwards; }
+/* チュートリアルの拡大図で「ここを押す」ボタンに重ねる波紋（TutorialIllustrations） */
+@keyframes tutorial-ping {
+    from { opacity: 0.85; transform: scale(1); }
+    to { opacity: 0; transform: scale(1.8); }
+}
+.tutorial-ping { animation: tutorial-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+/* チュートリアルで照らしている実際の部品の枠。横長の検索バーでも同じ幅で広がるよう、拡大ではなく影で波打たせる */
+@keyframes tutorial-glow {
+    from { box-shadow: 0 0 0 0 rgba(196, 181, 253, 0.65); }
+    to { box-shadow: 0 0 0 12px rgba(196, 181, 253, 0); }
+}
+.tutorial-glow { animation: tutorial-glow 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
 
 @media (prefers-reduced-motion: reduce) {
     .animate-sheet-rise,
@@ -277,7 +289,9 @@ body {
     .animate-ui-drop,
     .animate-ui-pop,
     .animate-ui-view,
-    .animate-ui-fade {
+    .animate-ui-fade,
+    .tutorial-ping,
+    .tutorial-glow {
         animation: none;
     }
 }

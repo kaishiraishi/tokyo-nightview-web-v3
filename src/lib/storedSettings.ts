@@ -62,3 +62,9 @@ export const writeStoredHeadingSensor = (enabled: boolean) => writeStoredFlag(HE
 const REVEAL_ALL_POSTS_STORAGE_KEY = 'nightview.revealAllPosts';
 export const readStoredRevealAllPosts = () => readStoredFlag(REVEAL_ALL_POSTS_STORAGE_KEY, false);
 export const writeStoredRevealAllPosts = (enabled: boolean) => writeStoredFlag(REVEAL_ALL_POSTS_STORAGE_KEY, enabled);
+
+// 初回のチュートリアル。一度閉じたら（最後まで見ても、スキップしても）次からは出さない。
+// メニュー →「はじめてガイド」からもう一度見られる
+const TUTORIAL_SEEN_STORAGE_KEY = 'nightview.tutorialSeen';
+export const readStoredTutorialSeen = () => readStoredFlag(TUTORIAL_SEEN_STORAGE_KEY, false);
+export const writeStoredTutorialSeen = (seen: boolean) => writeStoredFlag(TUTORIAL_SEEN_STORAGE_KEY, seen);

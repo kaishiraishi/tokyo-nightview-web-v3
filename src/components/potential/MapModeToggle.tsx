@@ -15,7 +15,7 @@ export function MapModeToggle({ mode, onModeChange, className = '' }: MapModeTog
 
     return (
         // 外側の位置指定（absolute など）は呼び出し側の className で決める。滑る背景はその中で絶対配置する
-        <div className={`flex items-center rounded-full ${glassControl} p-1 ${className || 'relative'}`} role="group" aria-label="モード切替">
+        <div className={`flex items-center rounded-full ${glassControl} p-1 ${className || 'relative'}`} role="group" aria-label="モード切替" data-tutorial="mode-toggle">
             <span
                 aria-hidden="true"
                 className={`pointer-events-none absolute left-1 top-1 h-[var(--btn-h)] w-[var(--btn-h)] rounded-full shadow-sm motion-safe:transition-[transform,background-color] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] bg-violet-700 ${isExplore ? 'translate-x-0' : 'translate-x-[var(--btn-h)]'}`}
