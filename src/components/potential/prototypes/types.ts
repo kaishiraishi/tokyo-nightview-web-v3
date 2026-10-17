@@ -8,7 +8,7 @@ export type PotentialSample = {
     distance: number;
     // RGBA から色ランプを逆引きした近似値。Float32 の真値ではない。
     rawValue: number | null;
-    // 0〜1 に正規化した値 (rawValue / 0.1635)
+    // 0〜1 に正規化した値 (rawValue / MAX_POTENTIAL_VALUE)
     strength: number;
     // 閾値と非線形変換を加えた表示用の値
     visualStrength: number;

@@ -26,16 +26,16 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-MAX_POTENTIAL_VALUE = 0.1635
+MAX_POTENTIAL_VALUE = 0.161529
 DEFAULT_THRESHOLD = 0.006
 # (value, RGBA). Same stops as POTENTIAL_COLOR_RAMP in src/lib/potentialSampler.ts.
 COLOR_RAMP = [
     (0.0, (20, 18, 30, 40)),
-    (2.58e-13, (38, 25, 74, 90)),
-    (0.000397, (86, 35, 102, 140)),
-    (0.0482, (190, 75, 70, 200)),
-    (0.1635, (255, 166, 0, 235)),
-    (0.8848, (255, 239, 120, 255)),
+    (6.75e-16, (38, 25, 74, 90)),
+    (0.001501, (86, 35, 102, 140)),
+    (0.068621, (190, 75, 70, 200)),
+    (0.161529, (255, 166, 0, 235)),
+    (0.704804, (255, 239, 120, 255)),
 ]
 ZOOM_DIRS = ("10", "11", "12", "13", "14", "15", "16")
 

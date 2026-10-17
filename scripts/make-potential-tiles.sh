@@ -2,7 +2,9 @@
 set -euo pipefail
 
 # ---- INPUTS ----
-IN_TIF="/Users/kaishiraishi/Desktop/PLATEAU_AWARD/plateau_tokyo_DSM_v2/temp/nightview_potential_full.tif"
+# merged5（1都3県＋山梨、2026-10-09 に上位 3,000 点を 10m で精査した値。点の格子は 90m）。計算側の
+# /root/nightview-data/processed/web/export/nightview_potential_full_merged5.tif のコピー（README_potential_merged5.md も同じ場所）
+IN_TIF="/Users/kaishiraishi/Desktop/PLATEAU_AWARD/plateau_tokyo_DSM_v2/temp/nightview_potential_full_merged5.tif"
 
 # ---- OUTPUT ----
 # gdal2tiles の PNG と中間ファイルは public/ の外（git 管理外）に置く。public/ 配下は dist にコピーされるため。
@@ -12,7 +14,7 @@ PNG_DIR="./tiles-work/potential-png"
 OUT_DIR="./public/NightViewPotential_tiles"
 # 地図の表示用（上位 10% だけ）。閾値は src/lib/potentialSampler.ts の POTENTIAL_DISPLAY_THRESHOLD と一致させる
 DISPLAY_OUT_DIR="./public/NightViewPotential_top10_tiles"
-DISPLAY_THRESHOLD="0.0479"
+DISPLAY_THRESHOLD="0.0538"
 mkdir -p "$WORK" "$PNG_DIR"
 
 # ---- PARAMS ----
@@ -40,7 +42,8 @@ MINICONDA_PY="/Users/kaishiraishi/miniconda3/bin/python"
   "$WORK/potential_3857.tif" "$WORK/potential_3857_smooth.tif" 1.2
 
 # -----------------------------
-# 3. Create Color Ramp (0 - 0.8848, MAX_POTENTIAL_VALUE = 0.1635)
+# 3. Create Color Ramp (0 - 0.704804, MAX_POTENTIAL_VALUE = 0.161529)
+# Stops = positive-value min / p50 / p95 / p99 / max of the source GeoTIFF (README_potential_merged5.md).
 # Glow style: alpha rises with value so near-zero cells fade into the
 # basemap instead of painting a solid flat field.
 # Keep in sync with src/lib/potentialSampler.ts COLOR_RAMP / MAX_POTENTIAL_VALUE.
@@ -50,11 +53,11 @@ RAMP="$WORK/ramp.txt"
 cat << EOF > "$RAMP"
 nv 0 0 0 0
 0 20 18 30 40
-2.58e-13 38 25 74 90
-0.000397 86 35 102 140
-0.0482 190 75 70 200
-0.1635 255 166 0 235
-0.8848 255 239 120 255
+6.75e-16 38 25 74 90
+0.001501 86 35 102 140
+0.068621 190 75 70 200
+0.161529 255 166 0 235
+0.704804 255 239 120 255
 EOF
 
 # -----------------------------

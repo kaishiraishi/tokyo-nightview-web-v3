@@ -2,15 +2,20 @@ import { useMemo, useState } from 'react';
 import { X } from '../ui/icons';
 import { closeButton, glassSurface } from '../../styles/ui';
 import type { DeviceHeadingStatus } from '../../hooks/useDeviceHeading';
-import { CANVAS_SIZE, compassName, formatDistance, POLAR_INNER_RADIUS, POLAR_OUTER_RADIUS } from './prototypes/canvas';
-import { SAMPLE_BEARINGS } from '../../lib/potentialSampler';
+import { CANVAS_SIZE, compassName, formatDistance } from './prototypes/canvas';
+import { SAMPLE_BEARINGS, type MapLocation } from '../../lib/potentialSampler';
 import { potentialColorCss } from './prototypes/colorScale';
 import { smoothProfile } from './prototypes/interpolation';
-import { PolarHeatmapView, type PolarPick } from './prototypes/PolarHeatmap';
+import type { PolarPick } from './prototypes/PolarHeatmap';
+import { DISC_RADIUS, HeatmapDisc } from './HeatmapDisc';
 import { POTENTIAL_RANGES, type PolarCell, type PotentialRange, type PotentialViewModel } from './prototypes/types';
 
 export type CompassModeProps = {
     data: PotentialViewModel | null;
+    // 円の中心（選択地点、なければ現在地）。null のときは円を出さない
+    center: MapLocation | null;
+    // 円に出すヒートマップのタイル（地図の「表示するスコア」と同じもの）
+    tileDir: string;
     isLoading: boolean;
     range: PotentialRange;
     onRangeChange: (range: PotentialRange) => void;
@@ -33,8 +38,8 @@ export type CompassModeProps = {
 const DIAL_SCALE = 0.87;
 const DISK_SCALE = 0.86;
 const DIAL_SIZE = `calc(min(100cqw, 100cqh) * ${DIAL_SCALE})`;
-// 縮尺バーの長さ = 文字盤上で中心から range までの長さ（Polar の INNER → OUTER）
-const SCALE_BAR_WIDTH = `calc(min(100cqw, 100cqh) * ${DIAL_SCALE * DISK_SCALE * ((POLAR_OUTER_RADIUS - POLAR_INNER_RADIUS) / CANVAS_SIZE)})`;
+// 縮尺バーの長さ = 文字盤上で中心から range までの長さ（円の半径）
+const SCALE_BAR_WIDTH = `calc(min(100cqw, 100cqh) * ${DIAL_SCALE * DISK_SCALE * (DISC_RADIUS / CANVAS_SIZE)})`;
 
 // 読み取り値の 1 行。方位・距離はなぞった（タップした）位置、強度と値はその位置のセル
 function readoutText(bearing: number, distance: number, cell: PolarCell | null) {
@@ -42,9 +47,9 @@ function readoutText(bearing: number, distance: number, cell: PolarCell | null) 
     return cell ? `${head} · 強度 ${Math.round(cell.visualStrength * 100)}% · 値 ${cell.rawValue.toFixed(3)}` : head;
 }
 
-// タップした位置の印。文字盤の円（Polar の canvas）の中心からの半径を、canvas に対する割合で置く
+// タップした位置の印。円の中心からの半径（距離に比例）を、canvas に対する割合で置く
 function TargetMarker({ target, range, rotation }: { target: PolarPick; range: number; rotation: number }) {
-    const radius = POLAR_INNER_RADIUS + Math.min(1, target.distance / range) * (POLAR_OUTER_RADIUS - POLAR_INNER_RADIUS);
+    const radius = Math.min(1, target.distance / range) * DISC_RADIUS;
     return (
         <div className="pointer-events-none absolute inset-0" style={{ transform: `rotate(${target.bearing - rotation}deg)` }}>
             <div
@@ -193,6 +198,8 @@ function NavScale({ range, onRangeChange }: { range: PotentialRange; onRangeChan
 
 export function CompassMode({
     data,
+    center,
+    tileDir,
     isLoading,
     range,
     onRangeChange,
@@ -207,13 +214,13 @@ export function CompassMode({
     onTargetChange,
 }: CompassModeProps) {
     // 文字盤をなぞった位置の値。吹き出しにせず、ヘッダーの状態表示の位置に出す
-    const [hovered, setHovered] = useState<PolarCell | null>(null);
+    const [hovered, setHovered] = useState<PolarPick | null>(null);
     const dialRotation = heading ?? 0;
     const strongest = strongestDirection(data);
     const hasUsefulDirection = strongest !== null && strongest.strength > 0.015;
     const profile = useMemo(() => (data ? smoothProfile(outerDirectionStrengths(data)) : null), [data]);
     const readout = hovered
-        ? readoutText(hovered.bearing, hovered.distance, hovered)
+        ? readoutText(hovered.bearing, hovered.distance, hovered.cell)
         : target ? readoutText(target.bearing, target.distance, target.cell) : null;
     const message = lowAccuracy && status === 'active'
         ? '精度が低い状態です。端末を8の字に振って補正してください'
@@ -256,14 +263,14 @@ export function CompassMode({
                     <CompassBezel rotation={dialRotation} profile={profile} />
 
                     <div className="absolute inset-[7%] overflow-hidden rounded-full border border-white/10 bg-[#080b10]/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.55)]">
-                        {data ? (
-                            <PolarHeatmapView data={data} rotation={dialRotation} showCompassLabels={false} showDistanceLabels={false} showTooltip={false} onHoverChange={setHovered} onPick={onTargetChange} />
+                        {center ? (
+                            <HeatmapDisc center={center} range={range} rotation={dialRotation} tileDir={tileDir} onHoverChange={setHovered} onPick={onTargetChange} />
                         ) : (
                             <div className="grid h-full place-items-center px-6 text-center text-[11px] leading-relaxed text-white/45">
-                                {isLoading ? '夜景ポテンシャルを読み込んでいます…' : '選択地点または現在地のデータがありません'}
+                                現在地がまだ取得できていません
                             </div>
                         )}
-                        {data && target && <TargetMarker target={target} range={data.range} rotation={dialRotation} />}
+                        {center && target && <TargetMarker target={target} range={range} rotation={dialRotation} />}
                     </div>
 
                     <ForwardCone />

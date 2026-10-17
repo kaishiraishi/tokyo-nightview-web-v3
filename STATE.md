@@ -11,7 +11,7 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
   - リポジトリ名は `tokyo-nightview-web-v3`。**ローカルのフォルダ名 `tokyo-nighview-web-v3`（t が 1 つ少ない）で URL を作ると 404 になる**
 - 方式: GitHub Actions（`.github/workflows/deploy.yml`）。`main` への push で lint → build → タイル 2 系統・manifest の検証 → Pages にデプロイ
 - **リポジトリは private**。Pages のサイトは誰でも見られる（`public: true`）。公開されるのは `dist` の中身だけ（投稿のデモデータの座標も含む）
-- 配信物: ポテンシャルのタイルは git 管理の WebP 2 系統（`NightViewPotential_tiles` 2.21MB = コンパス用・「高・中・低」表示用、`NightViewPotential_top10_tiles` 0.48MB = 「高のみ」表示用）、`public/target-area.geojson`（1都3県の形）
+- 配信物: ポテンシャルのタイルは git 管理の WebP 2 系統（`NightViewPotential_tiles` 5.16MB = コンパス用・「高・中・低」表示用、`NightViewPotential_top10_tiles` 1.21MB = 「高のみ」表示用。どちらも 12,740 枚。2026-10-18 に merged5 で作り直し）、`public/target-area.geojson`（1都3県の形）
 - Secrets は未設定。投稿機能はモック投稿のみ（`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` を Secrets に入れて再デプロイすると有効になる）
 - 再デプロイ: `main` に push するだけ。push・デプロイは人の承認後（`AGENTS.md`）
 - 削除した旧 VIIRS タイルのバックアップ: `~/Desktop/tokyo-nightview-backup/viirs_heat_tiles-2026-10-02.tar.gz`
@@ -22,7 +22,7 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 
 ### 地図
 - 表示モード（標準 / ポテンシャル / 航空写真）。航空写真ではポテンシャルを写真の上に重ねる
-- 「表示するスコア: 高のみ / 高・中・低」（既定は高のみ = 色の付く場所の上位 10%、値 0.0479 以上を焼き込んだ別タイル）。「?」で高・中・低の内訳（上位 % と値）を表示。コンパスの分析は常に閾値 0.006 のタイルを使う
+- 「表示するスコア: 高のみ / 高・中・低」（既定は高のみ = 色の付く場所の上位 10%、値 0.0538 以上を焼き込んだ別タイル）。「?」で高・中・低の内訳（上位 % と値）を表示。コンパスの分析は常に閾値 0.006 のタイルを使う
 - 対象範囲は 1都3県（東京・神奈川・千葉・埼玉）。範囲外を暗くし、外周（淡い紫の実線）と都県境（破線）を表示（地球地図日本）
 - 出典: 地球地図日本（国土地理院）/ 国土交通省 Project PLATEAU（常時）/ CARTO / OpenStreetMap。既定の「MapLibre」リンクは外した
 - PLATEAU の 3D 建物（設定でオン/オフ、見本画像つき）
@@ -72,24 +72,27 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 - 二本指の操作中は部品を無効化（2026-10-04、未コミット）: `html[data-multi-touch]`（`PotentialMapView` が touchstart/end で付け外し）で、ボタン・入力・ポップアップを pointer-events none + 不透明度 0.5 に。実機の二本指では未確認
 - 動きの追加（2026-10-04）: メニュー・表示モード画面の暗い幕を `animate-ui-fade`（200ms）でふわっと、投稿モードに入ると＋の場所が `animate-ui-pop` で現れる。reduced-motion では動かさない
 - 初回のチュートリアル（2026-10-08、`ac4ab396` で公開済み。ユーザー依頼）: 初めて開いた人に、実際の画面の部品を照らして説明する 6 段のコーチマーク（`src/components/onboarding/`）。部品は `data-tutorial` で探して測り、穴あきの幕で照らし、矢印つきのカード（部品の拡大図・アイコン入りの本文）を隣に出す。地図の読み込み後に表示、`nightview.tutorialSeen` で一度だけ、メニュー → 設定の「チュートリアル → もう一度見る」と、はじめてガイドの「画面で見るチュートリアル」で再表示。表示中は向きセンサーを始めず、閉じるクリックで始める。（最初は主画面の縮小図を描く方式で作ったが、ユーザーの依頼で実際の画面を照らす方式に変えた。）verify PASS、agent-browser（390×844 / 1280×800）で全段の照らす位置とカードの位置、部品がないときの中央表示、はじめる・スキップで記録 → 再読み込みで出ない → メニューから再表示、を確認。実機（iOS の許可の出る順番、スワイプ、横向き）は未確認。`docs/figma-screen-spec.md` は未反映
+- 向きとコンパスの円（2026-10-18、未コミット。ユーザー依頼）: (1) 端末を左に傾けると左が正面になる問題を直した。正面を「端末の上端」から「人が向いている方向」（平らなら画面の上、立てたら背面）に変えた（`src/lib/heading.ts`）。iOS は `webkitCompassHeading` から相対 `alpha` の基準を北に合わせる。`screen.orientation` がない古い iOS は `window.orientation` を使う。持ち方ごとの計算はスクリプトで確認（平ら・45°・立てる・立てて 15/45/90° 左へ回す・横画面・四元数・iOS の基準合わせ。すべて正面が北 / 東のまま）。**実機では未確認** (2) コンパスの円を極座標から、地図のヒートマップを円形に切り取った表示に変えた（`HeatmapDisc`、`src/lib/potentialDisc.ts`）。距離は等間隔、タップの読み取り値はサンプリング用タイルから読む。verify PASS、agent-browser（390×844 / 1280×800、八王子・表示スコア「高・中・低」）で円の色の位置が地図と一致すること、タップした点が地図の色の場所に出ることを確認
+- コンパスモードの現在地の追従（2026-10-18、未コミット。ユーザー依頼）: `src/hooks/useFollowLocation.ts`。中心が現在地のとき、現在地の更新ごとに、カードに隠れない部分の中心へ動かす（ズーム・向きはそのまま）。ドラッグで一時停止し 10 秒後に戻る。現在地ボタンはズームを変えずにすぐ戻す。verify PASS。agent-browser（390×844、位置情報を差し替えて移動を再現）で、開いたとき・移動したときに現在地が見えている部分の中心（数 px 以内）に来ること、ドラッグ中は追従しないこと、10 秒後と現在地ボタンで戻ることを確認。**注意**: agent-browser でドラッグすると、キーコード 189（−）の keydown が繰り返し届いて地図が縮小し続ける。アプリはキーイベントを出していないので、ツール側の現象（確認時は地図のキーボード操作を止めて試した）。実機では未確認
+- ポテンシャルの元データを merged5 に差し替え（2026-10-18、ユーザー提供）: `nightview_potential_full_merged5.tif`（1都3県＋山梨、上位 3,000 点は 10m 精査後の値。点の格子は 90m）を `plateau_tokyo_DSM_v2/temp/` に置き、`IN_TIF` を変更。色ランプの値の段階を新しい分布（正の値の最小・中央値・p95・p99・最大）で作り直し、`MAX_POTENTIAL_VALUE` 0.1635 → 0.161529（4 か所同期: `make-potential-tiles.sh`、`bake-potential-tiles.py`、`potential-quantiles.py`、`potentialSampler.ts`）。閾値 0.006 は値の意味が同じなのでそのまま。タイル 2 系統と順位表を作り直し、上位 10% の境目は 0.0479 → 0.0538。タイルは 4,969 → 12,740 枚（千葉県もほぼ全域が入った）。agent-browser（1280×800）で 1都3県の全体を両方の表示で確認
 - 公開（2026-10-04）: `d284c69f` を push してデプロイ済み（上の 2026-10-04 の未コミットの項目はすべてこれに含まれる）。実機（二本指の無効化、写真付きカードの切り替わり）は未確認
 
 ## Next
 
-1. **実機確認**（公開版で）: ① 向きセンサーの既定 ON・最初のタップでの開始（iOS の許可ダイアログ、Android）② 投稿モードの位置情報の許可と、実際の GPS での解放（100m・精度 100m）③ 上の帯の検索バーにキーボードを出したときの見え方 ④ 地図の滑らかさと発熱 ⑤ スマホ横向きでのコンパス自動オープン
-2. **投稿の場所を本当に隠すか**: 今は見せ方で隠しているだけで、正確な座標と写真はクライアントに届いている。本番の投稿で隠すなら、サーバー（Supabase の RPC など）で「着いたか」を判定してから座標を返す設計が要る
-3. **ポテンシャルのデータ範囲**: データは東経 139.92 度までで、千葉県の大部分にない。対象を 1都3県にするなら、元データを広げて作り直す
-4. お問い合わせの送り先（決まったらメニューに戻す）、利用規約・プライバシーポリシー
-5. 本物のアカウント連携（`src/lib/demoAccount.ts` をセッションに置き換える）。投稿の表示名への反映
-6. 未使用ファイル（`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`、`CompassButton.tsx`、`directional-field/`、`polar-heatmap/`）と設定の「方向・距離の表示」の扱い
-7. 3D 建物タイルの自前生成（密集地が欠ける問題）
-8. 軽量化の続き（`PLAN.md` 021 の P1）、外部サービスの規約確認（CARTO、Nominatim、PLATEAU、地球地図日本）
+1. **向きの実機確認**: 平らに持つ・立てて持つ・立てたまま左右に傾ける・横画面で、正面（「向いている方角」と文字盤の上）が自分の向いている方向と合うか（iOS / Android）。合わなければ `heading.ts` の切り替えの角度（`BACK_BLEND_START` / `END`）を調整
+2. **実機確認**（公開版で）: ① 向きセンサーの既定 ON・最初のタップでの開始（iOS の許可ダイアログ、Android）② 投稿モードの位置情報の許可と、実際の GPS での解放（100m・精度 100m）③ 上の帯の検索バーにキーボードを出したときの見え方 ④ 地図の滑らかさと発熱 ⑤ スマホ横向きでのコンパス自動オープン
+3. **近づくと細かく見えるヒートマップ**（ユーザー依頼 2026-10-18）: 元データは merged5 に差し替えた（下の In progress）が、点の格子は 90m のままなので細かくはならない。細かくするには、計算側（Windows 192.168.3.12 / WSL）の densify（`processed/nvp/merged5/densify/summary.parquet` と `report.md`。上位 300 か所の道路沿いを 10m で評価した 1,670 点）を Mac に送ってもらい、高いズームだけで重ねる。できれば、上位の場所の周り（例: 半径 1km）を 30m か 10m の格子で計算した GeoTIFF も。densify は WSL の中にしかないので、一度 Windows 側へコピーしてから scp で取る（Mac に SSH の鍵が登録されていないので、scp はユーザーがパスワードを入れて実行する）
+4. **投稿の場所を本当に隠すか**: 今は見せ方で隠しているだけで、正確な座標と写真はクライアントに届いている。本番の投稿で隠すなら、サーバー（Supabase の RPC など）で「着いたか」を判定してから座標を返す設計が要る
+5. お問い合わせの送り先（決まったらメニューに戻す）、利用規約・プライバシーポリシー
+6. 本物のアカウント連携（`src/lib/demoAccount.ts` をセッションに置き換える）。投稿の表示名への反映
+7. 未使用ファイル（`ClassicPanels.tsx`、`prototypes/PrototypePanel.tsx`、`CompassControl.tsx`、`CompassButton.tsx`、`directional-field/`、`polar-heatmap/`）と設定の「方向・距離の表示」の扱い
+8. 3D 建物タイルの自前生成（密集地が欠ける問題）
+9. 軽量化の続き（`PLAN.md` 021 の P1）、外部サービスの規約確認（CARTO、Nominatim、PLATEAU、地球地図日本）
 
 ## Blockers / Risks
 
 - 実機での動作が未確認（センサーの自動開始、GPS での解放、キーボード、発熱）
 - 投稿の正確な座標はクライアントに届いている（デモデータなので現状は問題ないが、本番の投稿では要対応）
-- ポテンシャルのデータが千葉県の大部分にない
 - `npm run build` は成功するが、JS が約 1.3MB の chunk 警告
 - 3D 建物のタイル（第三者ホスティング）に依存。密集地が欠ける
 - GitHub Actions の警告: Node.js 20 の廃止予定、`ubuntu-latest` が 2026-10-19 から Ubuntu 26 に移る
@@ -121,7 +124,7 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 
 - AI 運用: Claude Code 単独。push・deploy は人の承認後。正本は `AGENTS.md`
 - 開発サーバーは `npx vite --port 5288 --strictPort` で起動する（5199 は別のアプリが使っていることがある）。確認は `http://localhost:5288/tokyo-nightview-web-v3/`
-- 色ランプ・`MAX_POTENTIAL_VALUE = 0.1635`・閾値 `0.006` は `make-potential-tiles.sh`、`bake-potential-tiles.py`、`potentialSampler.ts` の 3 か所を同期する。表示用の閾値 `0.0479`（上位 10%）は `POTENTIAL_DISPLAY_THRESHOLD` と `make-potential-tiles.sh` の `DISPLAY_THRESHOLD` を同期する
+- 色ランプ・`MAX_POTENTIAL_VALUE = 0.161529`・閾値 `0.006` は `make-potential-tiles.sh`、`bake-potential-tiles.py`、`potentialSampler.ts` の 3 か所を同期する。表示用の閾値 `0.0538`（上位 10%）は `POTENTIAL_DISPLAY_THRESHOLD` と `make-potential-tiles.sh` の `DISPLAY_THRESHOLD` を同期する
 - タイルを作り直したら、2 系統とも再生成し、`python3 scripts/potential-quantiles.py` で順位表も作り直してコミットする
 - 現在地の watch は、現在地ボタン・コンパスモード・お気に入りの現在地追加・投稿モードに入ったときに開始する
 - 端末の向きは画面の表示にだけ使い、保存・送信しない。現在地は、投稿したとき（送信）と「現在地をお気に入りに追加」したとき（端末に保存）だけ残る
@@ -130,4 +133,4 @@ v3 主画面（夜景ポテンシャル地図）は GitHub Pages に公開済み
 
 ## Last updated
 
-2026-10-09
+2026-10-18

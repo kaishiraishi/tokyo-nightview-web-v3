@@ -40,6 +40,15 @@ function ringsFeatureCollection(center: MapLocation, range: number): GeoJSON.Fea
 // カードの大きさは画面幅と縦横比で決まるので、割合ではなく合わせる時点の実寸を測る
 export type ObscuredEdge = { edge: 'top' | 'left'; card: RefObject<HTMLElement | null> };
 
+// カードに隠れる辺の幅（px、カードの外側のすき間を含む）。カードは地図と同じ親に絶対配置されている。
+// 出現アニメーションの拡大を含まない offset 系の値で測る。カードがまだ無いときは 0（カードの下に入るだけで、壊れはしない）
+export function obscuredSize({ edge, card }: ObscuredEdge): number {
+    const cardElement = card.current;
+    if (!cardElement) return 0;
+    const cardExtent = edge === 'top' ? cardElement.offsetTop + cardElement.offsetHeight : cardElement.offsetLeft + cardElement.offsetWidth;
+    return cardExtent + CARD_GAP;
+}
+
 export function useRangeRings(
     map: maplibregl.Map | null,
     isLoaded: boolean,
@@ -120,13 +129,7 @@ export function useRangeRings(
         });
         // 分割表示で地図の枠が変わった直後なので、サイズを取り直してから合わせる
         map.resize();
-        // カードは地図と同じ親に絶対配置されている。出現アニメーションの拡大を含まない offset 系の値で測る。
-        // カードがまだ無いときは隠れる分なしで合わせる（円が一部カードの下に入るだけで、壊れはしない）
-        const cardElement = card.current;
-        const cardExtent = cardElement
-            ? edge === 'top' ? cardElement.offsetTop + cardElement.offsetHeight : cardElement.offsetLeft + cardElement.offsetWidth
-            : 0;
-        const reserved = cardExtent + CARD_GAP;
+        const reserved = obscuredSize({ edge, card });
         const padding = { top: FIT_PADDING, bottom: FIT_PADDING, left: FIT_PADDING, right: FIT_PADDING };
         padding[edge] += reserved;
         map.fitBounds(bounds, { padding, maxZoom: FIT_MAX_ZOOM, duration: 600 });

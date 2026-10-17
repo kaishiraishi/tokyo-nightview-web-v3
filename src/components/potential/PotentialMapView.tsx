@@ -29,7 +29,7 @@ import {
     type PotentialDisplayScope,
 } from '../../lib/storedSettings';
 import { type PotentialRange } from './prototypes/types';
-import { POTENTIAL_THRESHOLD, type MapLocation } from '../../lib/potentialSampler';
+import { DISPLAY_TOP10_TILE_DIR, POTENTIAL_THRESHOLD, SAMPLING_TILE_DIR, type MapLocation } from '../../lib/potentialSampler';
 import { usePotentialAnalysis } from '../../hooks/usePotentialAnalysis';
 import { useMapLibre, POTENTIAL_LAYER_ID, PLATEAU_LAYER_ID, setPotentialDisplayScope } from '../../hooks/useMapLibre';
 import { usePostPopups } from '../../hooks/usePostPopups';
@@ -37,9 +37,10 @@ import { usePosts } from '../../hooks/usePosts';
 import type { Post } from '../../lib/postsApi';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { useDeviceHeading } from '../../hooks/useDeviceHeading';
+import { useFollowLocation } from '../../hooks/useFollowLocation';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { usePixelInspector } from '../../hooks/usePixelInspector';
-import { useRangeRings } from '../../hooks/useRangeRings';
+import { useRangeRings, type ObscuredEdge } from '../../hooks/useRangeRings';
 import { useCompassTarget } from '../../hooks/useCompassTarget';
 import { useSearchResultMarker, type SearchResultPlace } from '../../hooks/useSearchResultMarker';
 import { useFavorites } from '../../hooks/useFavorites';
@@ -148,6 +149,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
     const compassIsSampling = selectedLocation ? isSampling : compassAnalysis.isLoading;
     // デバッグモードでは、右クリックした地点の画素・値・上位 % を見られる（投稿モードでは使わない）
     usePixelInspector(map, isLoaded, debugMode && !isPostMode);
+    // コンパスのカードに隠れる辺（縦長は上、横長は左）
+    const compassObscured = useMemo<ObscuredEdge>(() => ({ edge: isLandscape ? 'left' : 'top', card: compassCardRef }), [isLandscape]);
     // コンパスモード中は、コンパスの距離ガイドと同じ円を地図に重ねる（中心はコンパスと同じ地点）
     useRangeRings(
         map,
@@ -155,8 +158,10 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         selectedLocation ?? currentLocation,
         maxDistance,
         isCompassModeOpen,
-        { edge: isLandscape ? 'left' : 'top', card: compassCardRef },
+        compassObscured,
     );
+    // コンパスモード中は、現在地を地図の見えている部分の中心に置き続ける（中心が選択地点のときは動かさない）
+    const { recenter: recenterOnUser } = useFollowLocation(map, isLoaded, currentLocation, isCompassModeOpen && !selectedLocation, compassObscured);
     useCompassTarget(map, isLoaded, selectedLocation ?? currentLocation, isCompassModeOpen ? compassTarget : null);
     const rotation = deviceHeading.status === 'active' && deviceHeading.heading !== null ? deviceHeading.heading : normalizeAngle(mapBearing);
 
@@ -384,6 +389,12 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
         if (!map) return;
         setLocateError(null);
         shownLocationErrorRef.current = null;
+        // コンパスモード中は、ズームを変えずに追従へ戻す（見えている部分の中心に現在地を置く）
+        if (isCompassModeOpen && !selectedLocation && userPosition) {
+            recenterOnUser();
+            startUserLocation();
+            return;
+        }
         if (userPosition) {
             locateRequestRef.current = false;
             map.flyTo({
@@ -395,7 +406,7 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
             locateRequestRef.current = true;
         }
         startUserLocation();
-    }, [map, startUserLocation, userPosition]);
+    }, [isCompassModeOpen, map, recenterOnUser, selectedLocation, startUserLocation, userPosition]);
 
     const handleCompassModeStart = useCallback(() => {
         startDeviceHeading();
@@ -543,6 +554,8 @@ export function PotentialMapView({ mode, onModeChange }: PotentialMapViewProps) 
                     >
                     <CompassMode
                         data={compassViewModel}
+                        center={selectedLocation ?? currentLocation}
+                        tileDir={potentialScope === 'all' ? SAMPLING_TILE_DIR : DISPLAY_TOP10_TILE_DIR}
                         isLoading={compassIsSampling}
                         range={maxDistance}
                         onRangeChange={handleCompassRangeChange}

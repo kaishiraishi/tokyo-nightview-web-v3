@@ -5,7 +5,7 @@ export type MapLocation = {
     lat: number;
 };
 
-type TileData = {
+export type TileData = {
     pixels: Uint8ClampedArray;
 };
 
@@ -14,26 +14,26 @@ type ColorRampStop = {
     color: [number, number, number, number];
 };
 
-const TILE_SIZE = 256;
+export const TILE_SIZE = 256;
 const SAMPLE_ZOOM = 14;
-export const MAX_POTENTIAL_VALUE = 0.1635;
+export const MAX_POTENTIAL_VALUE = 0.161529;
 // 地図に出すポテンシャルの閾値（「絞って探す」）。タイル生成時に焼き込み済み（scripts/bake-potential-tiles.py の
 // --threshold と一致させる）。クライアントでは方向・距離の ViewModel にも同じ値を渡す
 export const POTENTIAL_THRESHOLD = 0.006;
 // 地図の表示だけに使う閾値: z14 で光っている画素（POTENTIAL_THRESHOLD 以上）の上位 10%（potentialQuantiles の
 // 900/1000 位置）。public/NightViewPotential_top10_tiles に焼き込み済み。コンパスのサンプリングは
 // POTENTIAL_THRESHOLD のタイルを読むので、弱い光も方向の強さに入る
-export const POTENTIAL_DISPLAY_THRESHOLD = 0.0479;
+export const POTENTIAL_DISPLAY_THRESHOLD = 0.0538;
 const TILE_CACHE = new Map<string, Promise<TileData | null>>();
 
 // Keep this in sync with scripts/make-potential-tiles.sh.
 export const POTENTIAL_COLOR_RAMP: ColorRampStop[] = [
     { value: 0, color: [20, 18, 30, 40] },
-    { value: 2.58e-13, color: [38, 25, 74, 90] },
-    { value: 0.000397, color: [86, 35, 102, 140] },
-    { value: 0.0482, color: [190, 75, 70, 200] },
-    { value: 0.1635, color: [255, 166, 0, 235] },
-    { value: 0.8848, color: [255, 239, 120, 255] },
+    { value: 6.75e-16, color: [38, 25, 74, 90] },
+    { value: 0.001501, color: [86, 35, 102, 140] },
+    { value: 0.068621, color: [190, 75, 70, 200] },
+    { value: 0.161529, color: [255, 166, 0, 235] },
+    { value: 0.704804, color: [255, 239, 120, 255] },
 ];
 
 function locationToTilePixel(location: MapLocation, zoom: number) {
@@ -53,8 +53,13 @@ function locationToTilePixel(location: MapLocation, zoom: number) {
     };
 }
 
-async function loadTile(tileX: number, tileY: number, zoom: number) {
-    const key = `${zoom}/${tileX}/${tileY}`;
+// サンプリング（方向・距離の分析）用は閾値 0.006 を焼き込んだタイル、表示用は上位 10% だけのタイル
+export const SAMPLING_TILE_DIR = 'NightViewPotential_tiles';
+export const DISPLAY_TOP10_TILE_DIR = 'NightViewPotential_top10_tiles';
+
+// タイルの RGBA を読む（キャッシュ）。範囲外などで読めなければ null
+export function loadPotentialTile(tileX: number, tileY: number, zoom: number, dir = SAMPLING_TILE_DIR) {
+    const key = `${dir}/${zoom}/${tileX}/${tileY}`;
     const cached = TILE_CACHE.get(key);
     if (cached) return cached;
 
@@ -75,12 +80,14 @@ async function loadTile(tileX: number, tileY: number, zoom: number) {
             resolve({ pixels: context.getImageData(0, 0, TILE_SIZE, TILE_SIZE).data });
         };
         image.onerror = () => resolve(null);
-        image.src = `${import.meta.env.BASE_URL}NightViewPotential_tiles/${zoom}/${tileX}/${tileY}.webp`;
+        image.src = `${import.meta.env.BASE_URL}${dir}/${zoom}/${tileX}/${tileY}.webp`;
     });
 
     TILE_CACHE.set(key, request);
     return request;
 }
+
+const loadTile = (tileX: number, tileY: number, zoom: number) => loadPotentialTile(tileX, tileY, zoom);
 
 export function potentialValueFromPixel(pixel: [number, number, number, number]) {
     if (pixel[3] < 8) return 0;
@@ -146,6 +153,12 @@ async function readPotentialPixel(location: MapLocation, zoom: number): Promise<
 // デバッグモードの検査用: 地点の最も細かい（z14）タイルの画素と、そこから復元した値を返す。タイルがなければ null
 export function inspectPotentialPixel(location: MapLocation) {
     return readPotentialPixel(location, SAMPLE_ZOOM);
+}
+
+// 指定したズームのサンプリング用タイルから、地点の値を読む（コンパスの円をタップした地点の読み取り値に使う）
+export async function readPotentialValueAt(location: MapLocation, zoom: number): Promise<number | null> {
+    const info = await readPotentialPixel(location, zoom);
+    return info ? info.value : null;
 }
 
 async function samplePotentialValue(location: MapLocation, distance: number) {

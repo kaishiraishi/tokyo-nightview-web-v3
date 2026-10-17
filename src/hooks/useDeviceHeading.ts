@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { headingFromDeviceOrientation, headingFromQuaternion, smoothHeading, type DeviceHeadingReading } from '../lib/heading';
+import { compassOffsetSample, headingFromDeviceOrientation, headingFromQuaternion, smoothHeading, updateCompassOffset, type DeviceHeadingReading } from '../lib/heading';
 
 export type DeviceHeadingStatus = 'off' | 'requesting' | 'active' | 'denied' | 'unsupported' | 'error';
 
@@ -45,6 +45,8 @@ type ActiveSession = {
     fallbackTimer: number | null;
     dataTimer: number | null;
     hasReading: boolean;
+    // iOS: offset between the arbitrary alpha reference and magnetic north (see compassOffsetSample)
+    compassOffset: number | null;
     source: 'absolute' | 'deviceorientation' | 'sensor';
     cleaned: boolean;
     cleanup: () => void;
@@ -101,9 +103,16 @@ function unsupportedReason(): string {
     return 'この端末では方位センサーを利用できません';
 }
 
+type LegacyOrientationWindow = Window & { orientation?: number };
+
+// Clockwise rotation of the displayed UI. Older iOS Safari has no screen.orientation, only the
+// deprecated window.orientation (90 = rotated counter-clockwise, same as screen.orientation.angle 90).
 function screenAngle(): number {
     if (typeof window === 'undefined') return 0;
-    return window.screen.orientation?.angle ?? 0;
+    const angle = window.screen.orientation?.angle;
+    if (typeof angle === 'number') return angle;
+    const legacy = (window as LegacyOrientationWindow).orientation;
+    return typeof legacy === 'number' ? ((legacy % 360) + 360) % 360 : 0;
 }
 
 async function assertSensorPermissions(): Promise<void> {
@@ -183,6 +192,7 @@ export function useDeviceHeading(): UseDeviceHeadingResult {
             fallbackTimer: null,
             dataTimer: null,
             hasReading: false,
+            compassOffset: null,
             source: 'deviceorientation',
             cleaned: false,
             cleanup: () => {
@@ -236,7 +246,8 @@ export function useDeviceHeading(): UseDeviceHeadingResult {
         };
 
         const readDeviceOrientation = (event: DeviceOrientationEvent, allowRelativeFallback = false) => {
-            const reading = headingFromDeviceOrientation(event, screenAngle(), allowRelativeFallback);
+            session.compassOffset = updateCompassOffset(session.compassOffset, compassOffsetSample(event));
+            const reading = headingFromDeviceOrientation(event, screenAngle(), allowRelativeFallback, session.compassOffset);
             if (reading) scheduleFrame(reading);
         };
 
